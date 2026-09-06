@@ -414,3 +414,21 @@ class CheckpointDX:
             "query_name", query_name
         ).eq("is_valid", True).gt("expires_at", datetime.now().isoformat()).execute()
         return r.data[0]["cached_result"] if r.data else None
+
+    def extract_requirements_from_text(self, text: str) -> List[str]:
+        """Extracts discrete requirements from prompt text."""
+        import re
+        if not text:
+            return []
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text.strip()) if len(s.split()) > 2]
+        keywords = ["add", "implement", "create", "ensure", "support", "validate", "track", "build"]
+        reqs = [s for s in sentences if any(k in s.lower() for k in keywords)]
+        return reqs if reqs else sentences
+
+    def extract_intents_from_text(self, text: str) -> List[str]:
+        """Segments user prompt text into discrete intent clauses."""
+        import re
+        if not text:
+            return []
+        return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text.strip()) if len(s.split()) > 2]
+
