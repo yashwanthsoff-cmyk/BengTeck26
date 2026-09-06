@@ -1,0 +1,54 @@
+[
+  {
+    "checkpoint_id": "chk-001",
+    "session_id": "session-prod-01",
+    "branch": "feature/auth-pipeline",
+    "prompt_text": "Implement OAuth2 token authentication with JWT validation. Add user role checking middleware. Ensure token expiry is validated.",
+    "file_changes": [
+      {
+        "file_path": "auth/tokens.py",
+        "diff_hunk": "@@ -1,5 +1,15 @@\n+def validate_jwt_token(token):\n+    \"\"\"Validate OAuth2 token and extract payload.\"\"\"\n+    return jwt.decode(token, secret, algorithms=['HS256'])"
+      },
+      {
+        "file_path": "middleware/roles.py",
+        "diff_hunk": "@@ -10,4 +10,12 @@\n+def require_role(user, role):\n+    if user.role != role:\n+        raise PermissionError('Access denied')"
+      }
+    ],
+    "agent_name": "Antigravity-Agent",
+    "model_name": "openai/gpt-oss-120b",
+    "timestamp": "2026-09-06T09:00:00Z",
+    "transcript": "Starting auth task. Let me try synchronous token verification across shared state. That didn't work due to race condition with concurrent requests. Abandoning synchronous shared state approach in favor of stateless JWT tokens."
+  },
+  {
+    "checkpoint_id": "chk-002",
+    "session_id": "session-prod-01",
+    "branch": "feature/auth-pipeline",
+    "prompt_text": "Implement session caching layer using Redis. Skip Redis caching for now, we don't need in-memory caching yet.",
+    "file_changes": [
+      {
+        "file_path": "cache/redis_store.py",
+        "diff_hunk": "@@ -0,0 +1,10 @@\n+# Redis cache stub"
+      }
+    ],
+    "agent_name": "Antigravity-Agent",
+    "model_name": "openai/gpt-oss-120b",
+    "timestamp": "2026-09-06T09:15:00Z",
+    "transcript": "Investigated Redis caching. User requested to skip caching for now as out of scope. Caching requirement marked superseded."
+  },
+  {
+    "checkpoint_id": "chk-003",
+    "session_id": "session-prod-01",
+    "branch": "feature/auth-pipeline",
+    "prompt_text": "Ensure dead-end recovery metrics are recorded and audit log entries are emitted. Create audit table handler.",
+    "file_changes": [
+      {
+        "file_path": "audit/logger.py",
+        "diff_hunk": "@@ -1,3 +1,12 @@\n+def emit_audit_log(event_type, details):\n+    \"\"\"Emit structured audit log entry.\"\"\"\n+    logger.info({'event': event_type, 'details': details})"
+      }
+    ],
+    "agent_name": "Antigravity-Agent",
+    "model_name": "openai/gpt-oss-120b",
+    "timestamp": "2026-09-06T09:30:00Z",
+    "transcript": "Implemented audit logger. Dead-end recovery metrics verified."
+  }
+]

@@ -1,0 +1,19 @@
+# config.py.example — commit this file. Copy to config.py and fill in real
+# values; config.py itself is gitignored (see Section 0.0). Without this
+# example file, a clean checkout of the public repo has no config module at
+# all and every import in this document fails before anything can run.
+DATABRICKS_HOST = ""
+DATABRICKS_TOKEN = ""
+DATABRICKS_WAREHOUSE_ID = ""
+DATABRICKS_CATALOG = "checkpoint_dx"
+DATABRICKS_SCHEMA = "checkpoints"
+DATABRICKS_USER = "default"
+DATABRICKS_CLUSTER_ID = ""
+PROJECT_NAME = "checkpoint-dx"
+
+SUPABASE_URL = ""
+SUPABASE_ANON_KEY = ""
+SUPABASE_SERVICE_KEY = ""
+
+GROQ_API_KEY = ""
+GROQ_MODEL = "openai/gpt-oss-120b"
