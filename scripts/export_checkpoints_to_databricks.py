@@ -24,7 +24,7 @@ VOLUME_PATH = f"/Volumes/{DATABRICKS_CATALOG}/{DATABRICKS_SCHEMA}/raw_exports/ch
 
 SAMPLE_CHECKPOINTS = [
     {
-        "checkpoint_id": "chk-001",
+        "checkpoint_id": "01M1TWB9RANKAF8EPSTY7JRYE1",
         "session_id": "session-prod-01",
         "branch": "feature/auth-pipeline",
         "prompt_text": "Implement OAuth2 token authentication with JWT validation. Add user role checking middleware. Ensure token expiry is validated.",
@@ -44,7 +44,7 @@ SAMPLE_CHECKPOINTS = [
         "transcript": "Starting auth task. Let me try synchronous token verification across shared state. That didn't work due to race condition with concurrent requests. Abandoning synchronous shared state approach in favor of stateless JWT tokens."
     },
     {
-        "checkpoint_id": "chk-002",
+        "checkpoint_id": "01M1TWB9RCNEM0Y8W7NJVV1ZE1",
         "session_id": "session-prod-01",
         "branch": "feature/auth-pipeline",
         "prompt_text": "Implement session caching layer using Redis. Skip Redis caching for now, we don't need in-memory caching yet.",
@@ -60,7 +60,7 @@ SAMPLE_CHECKPOINTS = [
         "transcript": "Investigated Redis caching. User requested to skip caching for now as out of scope. Caching requirement marked superseded."
     },
     {
-        "checkpoint_id": "chk-003",
+        "checkpoint_id": "01M1TWB9RF32517RWMNA3ZV7DQ",
         "session_id": "session-prod-01",
         "branch": "feature/auth-pipeline",
         "prompt_text": "Ensure dead-end recovery metrics are recorded and audit log entries are emitted. Create audit table handler.",
