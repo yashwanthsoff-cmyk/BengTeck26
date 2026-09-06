@@ -109,21 +109,21 @@ else:
 st.title("Checkpoint-Native DX (v9)")
 st.caption("Enterprise developer experience bridging git/Entire checkpoints into Databricks Delta, Unity Catalog, and Supabase.")
 
-# Top Navigation Tabs for 5 Features
+# Top Navigation Tabs
 tab_a, tab_b, tab_c, tab_d, tab_e = st.tabs([
-    "Feature A: Dead-End Registry",
-    "Feature B: Requirement Ledger",
-    "Feature C: Intent Conformance",
-    "Feature D: Resume Contract",
-    "Feature E: Resume-Integrity & Memory",
+    "Dead-End Registry",
+    "Requirement Ledger",
+    "Intent Conformance",
+    "Resume Contract",
+    "Resume-Integrity & Memory",
 ])
 
 
 # ==============================================================================
-# PANEL A: FEATURE A — Dead-End Registry
+# PANEL A: Dead-End Registry
 # ==============================================================================
 with tab_a:
-    st.header("Feature A — Dead-End Registry (Special Tier)")
+    st.header("Dead-End Registry")
     st.markdown("Surfaces abandoned paths, root causes, and suggested alternatives persisted via MLflow Unity Catalog traces with Delta fallback.")
 
     dead_ends = []
@@ -171,8 +171,8 @@ with tab_a:
     else:
         st.info("No dead ends logged for this checkpoint yet.")
 
-    # Live query helper for demo
-    with st.expander("🔍 Live Databricks SQL Trace Query (Demo Script Beat 0:45–1:15)"):
+    # Live query helper
+    with st.expander("🔍 Live Databricks SQL Trace Query"):
         st.code(f"""
 -- Query live Unity Catalog trace fallback table
 SELECT checkpoint_id, dead_end_type, root_cause, suggested_fix, confidence, created_at
@@ -191,10 +191,10 @@ ORDER BY created_at DESC LIMIT 5;
 
 
 # ==============================================================================
-# PANEL B: FEATURE B — Requirement Ledger
+# PANEL B: Requirement Ledger
 # ==============================================================================
 with tab_b:
-    st.header("Feature B — Requirement Ledger (Advanced Tier)")
+    st.header("Requirement Ledger")
     st.markdown("Closes the context gap by tracking natural-language ask status (`not_started`, `in_progress`, `done`, `superseded`) with supersession reconciliation.")
 
     # Load requirements for selected checkpoint
@@ -261,7 +261,7 @@ with tab_b:
     else:
         st.info("No requirements found for this checkpoint.")
 
-    st.subheader("Add Requirement (FIX 3 Symmetric Parity Test)")
+    st.subheader("Add Requirement")
     new_req_text = st.text_input("New Requirement Text")
     if st.button("Add Requirement to Supabase + Delta + Memory"):
         if new_req_text.strip():
@@ -271,10 +271,10 @@ with tab_b:
 
 
 # ==============================================================================
-# PANEL C: FEATURE C — Intent Conformance Diff
+# PANEL C: Intent Conformance Diff
 # ==============================================================================
 with tab_c:
-    st.header("Feature C — Intent Conformance Diff (Core Tier)")
+    st.header("Intent Conformance Diff")
     st.markdown("Compares segmented prompt clauses with code diff hunks to compute implementation status (`met`, `gap`, `scope_creep`).")
 
     try:
@@ -306,19 +306,17 @@ with tab_c:
 
 
 # ==============================================================================
-# PANEL D: FEATURE D — Agent Resume Contract
+# PANEL D: Agent Resume Contract
 # ==============================================================================
 with tab_d:
-    st.header("Feature D — Agent Resume Contract (Nuclear Tier)")
-    st.markdown("Synthesizes Unresolved Requirements (B), Dead-End Approaches (A), Implementation Gaps (C), and Resume-Integrity Safety (E) into a machine-readable briefing contract for subsequent agents.")
+    st.header("Agent Resume Contract")
+    st.markdown("Synthesizes unresolved requirements, dead-end approaches, implementation gaps, and resume-integrity safety into a machine-readable briefing contract for subsequent agents.")
 
     st.markdown("### Generate Contract")
-    st.info("Uses **FIX 2 sequence**: Resolves `session_id` from checkpoint first, then generates and persists the contract.")
 
     if st.button("🚀 Generate Resume Contract", type="primary"):
-        with st.spinner("Synthesizing data from Features B, A, C, and E..."):
+        with st.spinner("Synthesizing data across checkpoints and requirements..."):
             try:
-                # FIX 2: UI "Generate Contract" button handler order
                 checkpoint = dx.get_checkpoint(selected_cid)
                 if not checkpoint:
                     st.error(f"Checkpoint {selected_cid} not found.")
@@ -352,11 +350,11 @@ with tab_d:
 
 
 # ==============================================================================
-# PANEL E: FEATURE E — Resume-Integrity Checking & Agent Memory
+# PANEL E: Resume-Integrity Checking & Agent Memory
 # ==============================================================================
 with tab_e:
-    st.header("Feature E — Resume-Integrity Checking & Agent Memory")
-    st.markdown("Intelligence & Resilience tier: verifies memory coverage against open requirements, blocks unsafe resumes with human-readable reasons, and provides active human-feedback learning.")
+    st.header("Resume-Integrity Checking & Agent Memory")
+    st.markdown("Verifies memory coverage against open requirements, blocks unsafe resumes with human-readable reasons, and provides active human-feedback learning.")
 
     col1, col2 = st.columns([2, 3])
 
