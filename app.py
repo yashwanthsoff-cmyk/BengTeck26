@@ -182,7 +182,9 @@ ORDER BY created_at DESC LIMIT 5;
         """, language="sql")
         if st.button("Run Live Trace Query on Databricks"):
             try:
-                rows = dx._run_sql(f"SELECT checkpoint_id, dead_end_type, root_cause, suggested_fix, confidence FROM {DATABRICKS_CATALOG}.{DATABRICKS_SCHEMA}.dead_end_traces_fallback LIMIT 10")
+                rows = dx._run_sql(f"SELECT checkpoint_id, dead_end_type, root_cause, suggested_fix, confidence FROM {DATABRICKS_CATALOG}.{DATABRICKS_SCHEMA}.dead_end_traces_fallback WHERE checkpoint_id = '{selected_cid}' ORDER BY created_at DESC LIMIT 5")
+                if not rows:
+                    rows = dx._run_sql(f"SELECT checkpoint_id, dead_end_type, root_cause, suggested_fix, confidence FROM {DATABRICKS_CATALOG}.{DATABRICKS_SCHEMA}.dead_end_traces_fallback LIMIT 10")
                 st.write(pd.DataFrame(rows, columns=["Checkpoint", "Type", "Root Cause", "Fix", "Confidence"]))
             except Exception as ex:
                 st.warning(f"Databricks SQL query result: {ex}")
