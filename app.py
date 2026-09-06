@@ -12,7 +12,6 @@ from config import PROJECT_NAME, DATABRICKS_CATALOG, DATABRICKS_SCHEMA
 
 st.set_page_config(
     page_title="Checkpoint-Native DX",
-    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -62,7 +61,7 @@ def get_dx():
 dx = get_dx()
 
 # Sidebar: Checkpoint & Session Selection
-st.sidebar.title("⚡ Checkpoint DX")
+st.sidebar.title("Checkpoint DX")
 st.sidebar.caption(f"Project: **{PROJECT_NAME}**")
 
 # Fetch available checkpoints from Supabase or Delta
@@ -154,7 +153,7 @@ with tab_a:
         for idx, de in enumerate(dead_ends):
             with st.container():
                 st.markdown(f"### #{idx+1} {de.get('dead_end_type', 'unknown').upper()}")
-                badge = "⚡ Delta Fallback" if de.get("used_fallback") else "✨ Unity Catalog Trace"
+                badge = "Delta Fallback" if de.get("used_fallback") else "Unity Catalog Trace"
                 st.caption(f"Trace Source: **{badge}** | Confidence: `{de.get('confidence_score', 0):.2f}` | Attempts: `{de.get('failed_attempts', 1)}`")
 
                 c1, c2 = st.columns(2)
@@ -172,7 +171,7 @@ with tab_a:
         st.info("No dead ends logged for this checkpoint yet.")
 
     # Live query helper
-    with st.expander("🔍 Live Databricks SQL Trace Query"):
+    with st.expander("Live Databricks SQL Trace Query"):
         st.code(f"""
 -- Query live Unity Catalog trace fallback table
 SELECT checkpoint_id, dead_end_type, root_cause, suggested_fix, confidence, created_at
@@ -237,11 +236,11 @@ with tab_b:
                 if status == "superseded":
                     st.markdown(f"~~{text}~~ *(superseded)*")
                 elif status == "done":
-                    st.markdown(f"✅ **{text}**")
+                    st.markdown(f"**[Done]** {text}")
                 else:
-                    st.markdown(f"📌 **{text}**")
+                    st.markdown(f"**{text}**")
                 if evidence:
-                    st.caption(f"ℹ️ {evidence}")
+                    st.caption(f"Note: {evidence}")
             with c2:
                 st.markdown(f"Status: `{status}`")
             with c3:
@@ -314,7 +313,7 @@ with tab_d:
 
     st.markdown("### Generate Contract")
 
-    if st.button("🚀 Generate Resume Contract", type="primary"):
+    if st.button("Generate Resume Contract", type="primary"):
         with st.spinner("Synthesizing data across checkpoints and requirements..."):
             try:
                 checkpoint = dx.get_checkpoint(selected_cid)
@@ -329,7 +328,7 @@ with tab_d:
                     st.json(contract_data)
 
                     st.download_button(
-                        "📥 Download Resume Contract JSON",
+                        "Download Resume Contract JSON",
                         data=json.dumps(contract_data, indent=2),
                         file_name=f"resume_contract_{selected_cid}.json",
                         mime="application/json",
@@ -342,7 +341,7 @@ with tab_d:
         try:
             contracts = dx.supabase.table("resume_contracts").select("*").eq("checkpoint_id", selected_cp["id"]).order("created_at", desc=True).execute().data or []
             for c in contracts:
-                passed = "✅ PASSED" if c.get("integrity_check_passed") else "⚠️ LOW INTEGRITY"
+                passed = "PASSED" if c.get("integrity_check_passed") else "LOW INTEGRITY"
                 with st.expander(f"Contract {c['id'][:8]} — {passed} ({c['created_at']})"):
                     st.json(c.get("contract_sections", {}))
         except Exception:
@@ -389,10 +388,10 @@ with tab_e:
                 with c2:
                     st.markdown(f"Conf: `{m['confidence']:.2f}`")
                 with c3:
-                    if st.button("👎", key=f"down_{unique_key}"):
+                    if st.button("Reject", key=f"down_{unique_key}"):
                         dx.record_human_feedback(selected_cid, m['key'], was_correct=False)
                         st.rerun()
-                    if st.button("👍", key=f"up_{unique_key}"):
+                    if st.button("Accept", key=f"up_{unique_key}"):
                         dx.record_human_feedback(selected_cid, m['key'], was_correct=True)
                         st.rerun()
                 st.divider()

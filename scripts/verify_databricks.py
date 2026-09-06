@@ -18,35 +18,35 @@ headers = {'Authorization': f'Bearer {config.DATABRICKS_TOKEN}'}
 url = f'{config.DATABRICKS_HOST}/api/2.1/unity-catalog/catalogs/{config.DATABRICKS_CATALOG}'
 r = requests.get(url, headers=headers)
 if r.status_code == 200:
-    print(f'  ✅ Catalog {config.DATABRICKS_CATALOG} exists')
+    print(f'  [PASS] Catalog {config.DATABRICKS_CATALOG} exists')
 else:
-    print(f'  ❌ Catalog error: {r.status_code} - {r.text[:100]}')
+    print(f'  [FAIL] Catalog error: {r.status_code} - {r.text[:100]}')
 
 # Test 2: Check Schema
 print('\n[2/5] Checking Schema...')
 url = f'{config.DATABRICKS_HOST}/api/2.1/unity-catalog/schemas/{config.DATABRICKS_CATALOG}.{config.DATABRICKS_SCHEMA}'
 r = requests.get(url, headers=headers)
 if r.status_code == 200:
-    print(f'  ✅ Schema {config.DATABRICKS_SCHEMA} exists')
+    print(f'  [PASS] Schema {config.DATABRICKS_SCHEMA} exists')
 else:
-    print(f'  ❌ Schema error: {r.status_code} - {r.text[:100]}')
+    print(f'  [FAIL] Schema error: {r.status_code} - {r.text[:100]}')
 
 # Test 3: Check Volume File
 print('\n[3/5] Checking Checkpoint Export File...')
 url = f'{config.DATABRICKS_HOST}/api/2.0/fs/files/Volumes/{config.DATABRICKS_CATALOG}/{config.DATABRICKS_SCHEMA}/raw_exports/checkpoints_export.json'
 r = requests.head(url, headers=headers)
 if r.status_code == 200:
-    print(f'  ✅ File exists: /Volumes/{config.DATABRICKS_CATALOG}/{config.DATABRICKS_SCHEMA}/raw_exports/checkpoints_export.json')
+    print(f'  [PASS] File exists: /Volumes/{config.DATABRICKS_CATALOG}/{config.DATABRICKS_SCHEMA}/raw_exports/checkpoints_export.json')
     
     # Get file size
     r = requests.get(url, headers=headers)
     data = json.loads(r.content)
-    print(f'  ✅ File size: {len(r.content)} bytes')
-    print(f'  ✅ Checkpoints in file: {len(data)}')
+    print(f'  [PASS] File size: {len(r.content)} bytes')
+    print(f'  [PASS] Checkpoints in file: {len(data)}')
     for cp in data:
         print(f"    - {cp.get('checkpoint_id', 'unknown')}")
 else:
-    print(f'  ❌ File error: {r.status_code}')
+    print(f'  [FAIL] File error: {r.status_code}')
     print(f'  Expected path: /Volumes/{config.DATABRICKS_CATALOG}/{config.DATABRICKS_SCHEMA}/raw_exports/checkpoints_export.json')
 
 # Test 4: Check Delta Tables
@@ -55,13 +55,13 @@ url = f'{config.DATABRICKS_HOST}/api/2.1/unity-catalog/tables?catalog_name={conf
 r = requests.get(url, headers=headers)
 if r.status_code == 200:
     tables = r.json().get('tables', [])
-    print(f'  ✅ Found {len(tables)} Delta tables:')
+    print(f'  [PASS] Found {len(tables)} Delta tables:')
     for t in tables[:10]:
         print(f"    - {t.get('name')}")
     if len(tables) > 10:
         print(f'    ... and {len(tables) - 10} more')
 else:
-    print(f'  ❌ Tables error: {r.status_code}')
+    print(f'  [FAIL] Tables error: {r.status_code}')
 
 # Test 5: Check SQL Warehouse
 print('\n[5/5] Checking SQL Warehouse...')
@@ -69,11 +69,11 @@ url = f'{config.DATABRICKS_HOST}/api/2.0/sql/warehouses/{config.DATABRICKS_WAREH
 r = requests.get(url, headers=headers)
 if r.status_code == 200:
     wh = r.json()
-    print(f"  ✅ SQL Warehouse: {wh.get('name', 'unknown')}")
-    print(f"  ✅ Status: {wh.get('state', 'unknown')}")
-    print(f"  ✅ Type: {wh.get('warehouse_type', 'unknown')}")
+    print(f"  [PASS] SQL Warehouse: {wh.get('name', 'unknown')}")
+    print(f"  [PASS] Status: {wh.get('state', 'unknown')}")
+    print(f"  [PASS] Type: {wh.get('warehouse_type', 'unknown')}")
 else:
-    print(f'  ❌ Warehouse error: {r.status_code}')
+    print(f'  [FAIL] Warehouse error: {r.status_code}')
 
 print('\n' + '=' * 60)
 print('VERIFICATION COMPLETE')

@@ -41,9 +41,9 @@ for i in range(3):
     ulids.append(ulid)
     print(f'  Checkpoint {i+1}: {ulid}')
 
-print(f'\n✅ Generated {len(ulids)} ULIDs')
-print('ℹ️  Format: 26 characters, Crockford Base32, time-sortable')
-print(f'ℹ️  Example: {ulids[0]}')
+print(f'\n[PASS] Generated {len(ulids)} ULIDs')
+print('[INFO]  Format: 26 characters, Crockford Base32, time-sortable')
+print(f'[INFO]  Example: {ulids[0]}')
 
 # ==================== SUPABASE ====================
 print('\n' + '=' * 70)
@@ -67,9 +67,9 @@ for i, cp in enumerate(checkpoints.data):
         'checkpoint_id': new_id
     }).eq('id', cp['id']).execute()
     
-    print(f'  ✅ Updated: {old_id} → {new_id}')
+    print(f'  [PASS] Updated: {old_id} → {new_id}')
 
-print('\n✅ All Supabase checkpoints updated with real ULIDs')
+print('\n[PASS] All Supabase checkpoints updated with real ULIDs')
 
 # ==================== LOCAL FIXTURE & EXPORT SCRIPT ====================
 print('\n' + '=' * 70)
@@ -86,7 +86,7 @@ if os.path.exists(fixture_path):
             cp['checkpoint_id'] = mapping[old_cid]
     with open(fixture_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2)
-    print(f'  ✅ Updated fixture: {fixture_path}')
+    print(f'  [PASS] Updated fixture: {fixture_path}')
 
 # Re-export to Databricks Volume
 try:
@@ -97,9 +97,9 @@ try:
             cp['checkpoint_id'] = mapping[old_cid]
     payload = json.dumps(SAMPLE_CHECKPOINTS, indent=2).encode('utf-8')
     upload_to_databricks_volume(payload)
-    print('  ✅ Uploaded updated ULID checkpoints to Databricks Volume')
+    print('  [PASS] Uploaded updated ULID checkpoints to Databricks Volume')
 except Exception as e:
-    print(f'  ⚠️ Databricks Volume upload note: {e}')
+    print(f'  [WARN] Databricks Volume upload note: {e}')
 
 # ==================== VERIFICATION ====================
 print('\n' + '=' * 70)
@@ -109,6 +109,6 @@ print('=' * 70)
 updated = client.table('checkpoints').select('*').order('created_at', desc=False).execute()
 for cp in updated.data:
     cp_id = cp['checkpoint_id']
-    print(f'  ✅ {cp_id} (length: {len(cp_id)}, format: ULID)')
+    print(f'  [PASS] {cp_id} (length: {len(cp_id)}, format: ULID)')
 
-print('\n🎯 Checkpoint IDs are now REAL ULID format!')
+print('\n[OK] Checkpoint IDs are now REAL ULID format!')
