@@ -105,9 +105,10 @@ class CheckpointDX:
         self.groq = Groq(api_key=GROQ_API_KEY) if (Groq and GROQ_API_KEY) else None
         self.groq_model = GROQ_MODEL
 
-    def _run_sql(self, statement: str) -> List[list]:
-        """Executes a SQL statement on the Databricks SQL Warehouse and returns rows."""
+    def _run_sql(self, statement: str, max_retries: int = 3) -> List[list]:
+        """Executes a SQL statement on the Databricks SQL Warehouse and returns rows, with automatic retry on Delta concurrency conflicts."""
         import requests
+        import time
         headers = {
             "Authorization": f"Bearer {DATABRICKS_TOKEN}",
             "Content-Type": "application/json",
@@ -118,27 +119,33 @@ class CheckpointDX:
             "wait_timeout": "30s",
         }
         url = f"{DATABRICKS_HOST}/api/2.0/sql/statements"
-        resp = requests.post(url, headers=headers, json=body)
-        if resp.status_code != 200:
-            raise RuntimeError(f"Databricks SQL API error ({resp.status_code}): {resp.text}")
 
-        res_data = resp.json()
-        statement_id = res_data.get("statement_id")
-        status = res_data.get("status", {}).get("state")
+        for attempt in range(max_retries):
+            resp = requests.post(url, headers=headers, json=body)
+            if resp.status_code != 200:
+                raise RuntimeError(f"Databricks SQL API error ({resp.status_code}): {resp.text}")
 
-        # Wait if statement is pending/running
-        while status in ("PENDING", "RUNNING"):
-            import time
-            time.sleep(1)
-            poll_resp = requests.get(f"{url}/{statement_id}", headers=headers)
-            res_data = poll_resp.json()
+            res_data = resp.json()
+            statement_id = res_data.get("statement_id")
             status = res_data.get("status", {}).get("state")
 
-        if status == "FAILED":
-            err_msg = res_data.get("status", {}).get("error", {}).get("message", "Unknown SQL failure")
-            raise RuntimeError(f"Databricks SQL query failed: {err_msg}")
+            # Wait if statement is pending/running
+            while status in ("PENDING", "RUNNING"):
+                time.sleep(1)
+                poll_resp = requests.get(f"{url}/{statement_id}", headers=headers)
+                res_data = poll_resp.json()
+                status = res_data.get("status", {}).get("state")
 
-        return res_data.get("result", {}).get("data_array", [])
+            if status == "FAILED":
+                err_msg = res_data.get("status", {}).get("error", {}).get("message", "Unknown SQL failure")
+                if any(k in err_msg for k in ("DELTA_CONCURRENT", "Transaction conflict", "Please retry")) and attempt < max_retries - 1:
+                    logger.warning(f"Delta concurrency conflict encountered. Retrying in {attempt + 1}s (attempt {attempt + 1}/{max_retries})...")
+                    time.sleep(1 + attempt)
+                    continue
+                raise RuntimeError(f"Databricks SQL query failed: {err_msg}")
+
+            return res_data.get("result", {}).get("data_array", [])
+        return []
 
     def get_checkpoint(self, checkpoint_id: str) -> Optional[Dict]:
         """Fetches a checkpoint record by checkpoint_id from Supabase."""
@@ -201,17 +208,24 @@ class CheckpointDX:
     # ---------- Feature B: Requirement Ledger ----------
     def set_requirement_status(self, checkpoint_id: str, requirement_text: str, new_status: str) -> None:
         """Updates requirement status in both Databricks Delta and Supabase."""
-        safe_text = requirement_text.replace("'", "''")
-        self._run_sql(f"""
-            UPDATE {self.catalog}.{self.schema}.requirements
-            SET status = '{new_status}'
-            WHERE checkpoint_id = '{checkpoint_id}' AND requirement_text = '{safe_text}'
-        """)
         checkpoint = self.get_checkpoint(checkpoint_id)
         if checkpoint:
-            self.supabase.table("requirements").update({
-                "status": new_status,
-            }).eq("checkpoint_id", checkpoint["id"]).eq("requirement_text", requirement_text).execute()
+            try:
+                self.supabase.table("requirements").update({
+                    "status": new_status,
+                }).eq("checkpoint_id", checkpoint["id"]).eq("requirement_text", requirement_text).execute()
+            except Exception as e:
+                logger.warning(f"Supabase requirement status update note: {e}")
+
+        safe_text = requirement_text.replace("'", "''")
+        try:
+            self._run_sql(f"""
+                UPDATE {self.catalog}.{self.schema}.requirements
+                SET status = '{new_status}'
+                WHERE checkpoint_id = '{checkpoint_id}' AND requirement_text = '{safe_text}'
+            """)
+        except Exception as e:
+            logger.warning(f"Databricks requirement status sync notice: {e}")
 
     # ---------- Feature A: Dead-End Registry ----------
     def log_dead_end(self, d: DeadEnd) -> Dict:

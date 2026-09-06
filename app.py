@@ -252,8 +252,11 @@ with tab_b:
                     key=f"req_stat_{r['id']}",
                 )
                 if new_st != status:
-                    dx.set_requirement_status(selected_cid, text, new_st)
-                    st.rerun()
+                    try:
+                        dx.set_requirement_status(selected_cid, text, new_st)
+                        st.rerun()
+                    except Exception as ex:
+                        st.warning(f"Note: {ex}")
             st.divider()
     else:
         st.info("No requirements found for this checkpoint.")
