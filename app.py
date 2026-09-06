@@ -3,6 +3,7 @@
 """
 import streamlit as st
 import json
+import hashlib
 import pandas as pd
 from datetime import datetime
 
@@ -376,7 +377,8 @@ with tab_e:
             st.warning(f"Note on Delta agent_memory query: {e}")
 
         if memories:
-            for m in memories:
+            for i, m in enumerate(memories):
+                unique_key = hashlib.md5(f"{m.get('key', '')}_{i}_{m.get('created_at', '')}_{selected_cid}".encode()).hexdigest()[:8]
                 c1, c2, c3 = st.columns([3, 1, 1])
                 with c1:
                     st.markdown(f"**Key:** `{m['key']}`")
@@ -384,10 +386,10 @@ with tab_e:
                 with c2:
                     st.markdown(f"Conf: `{m['confidence']:.2f}`")
                 with c3:
-                    if st.button("👎", key=f"down_{m['key']}"):
+                    if st.button("👎", key=f"down_{unique_key}"):
                         dx.record_human_feedback(selected_cid, m['key'], was_correct=False)
                         st.rerun()
-                    if st.button("👍", key=f"up_{m['key']}"):
+                    if st.button("👍", key=f"up_{unique_key}"):
                         dx.record_human_feedback(selected_cid, m['key'], was_correct=True)
                         st.rerun()
                 st.divider()
