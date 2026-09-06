@@ -171,7 +171,7 @@ streamlit run app.py
 ```
 Open **http://localhost:8501** in your browser.
 
----
+--
 
 ### 4. Configuration Details
 
