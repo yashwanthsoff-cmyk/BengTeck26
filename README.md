@@ -39,15 +39,15 @@ Pipeline Glue (pipeline_glue.py / notebooks/run_pipeline_glue.py)
 
 ## 2. Five Standalone Features
 
-1. **Feature A (Special Tier) — Dead-End Registry**:
+1. **Dead-End Registry**:
    Persists abandoned technical paths, root causes, and suggested fixes into MLflow Unity Catalog traces (`dead_end_traces`) with seamless Delta fallback (`dead_end_traces_fallback`) using typed array syntax.
-2. **Feature B (Advanced Tier) — Requirement Ledger**:
+2. **Requirement Ledger**:
    Maintains the complete lifecycle of natural-language asks (`not_started`, `in_progress`, `done`, `superseded`). Reconciles superseded items with prompt history and keeps Supabase, Delta, and `agent_memory` in full parity.
-3. **Feature C (Core Tier) — Intent Conformance Diff**:
+3. **Intent Conformance Diff**:
    Cross-references segmented prompt clauses with code diff hunks to surface implementation status (`met`, `gap`, `scope_creep`).
-4. **Feature D (Nuclear Tier) — Agent Resume Contract**:
+4. **Agent Resume Contract**:
    Synthesizes unresolved requirements (B), do-not-retry dead ends (A), flagged gaps (C), and resume safety scores (E) into a structured JSON contract briefing a second agent session to seamlessly continue work.
-5. **Feature E (Intelligence & Resilience Tier) — Resume-Integrity Checking & Agent Memory**:
+5. **Resume-Integrity Checking & Agent Memory**:
    Verifies whether open requirements have matching session memory, blocks unsafe resumes with human-readable diagnostic reasons, and incorporates real-time human feedback loop adjustments.
 
 ---
