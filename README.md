@@ -369,6 +369,57 @@ python -c "import json; [print(f'  - {c[\"checkpoint_id\"]}: {c[\"prompt_text\"]
 **Latest Checkpoint**: `01M1TWB9RANKAF8EPSTY7JRYE1`
 
 ---
+## ⚠️ Known Limitations and Next Steps
+
+### Current Limitations
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| **Checkpoint export is manual** | Must run `scripts/export_checkpoints_to_databricks.py` after new commits | Document in README; automate with Git hook post-commit or GitHub Action |
+| **Intent matching is lexical (token overlap)** | May miss semantically similar intents with different wording | Works for MVP; future upgrade to Groq-based semantic matching |
+| **Requirement extraction is keyword-based** | May miss requirements without keywords like "add", "implement", "fix" | Works for common cases; future: fine-tuned LLM for requirement extraction |
+| **No multi-user support** | Single-user only; can't collaborate on same checkpoint data | Acceptable for hackathon; future: Supabase Auth + RLS policies for team workspaces |
+| **MLflow tracing is Public Preview** | Unity Catalog trace storage may not be available in all workspaces | Fallback to Delta tables (`deadendtracesfallback`) works everywhere |
+| **No caching layer** | Every UI interaction queries database directly | Acceptable for small datasets; future: Redis caching + `dashboard_cache` table |
+| **Curveball not implemented** | Missing optional noon curveball feature | Deliberate scope decision; architecture is curveball-ready |
+
+### Next Steps
+
+#### Immediate (Post-Hackathon)
+
+- [ ] **Automate checkpoint export** — Git post-commit hook or GitHub Action to run `export_checkpoints_to_databricks.py` automatically
+- [ ] **Add caching layer** — Redis + `dashboard_cache` table for faster repeated queries
+- [ ] **Improve intent matching** — Groq-based semantic matching instead of token overlap
+- [ ] **Add user authentication** — Supabase Auth + RLS policies for multi-user support
+
+#### Short-Term (1-2 Months)
+
+- [ ] **CI/CD pipeline** — Automated tests on every push + deployment to cloud
+- [ ] **Dockerize** — Container image for easy deployment (`docker-compose up`)
+- [ ] **API documentation** — OpenAPI spec + user guide for developers
+- [ ] **Monitoring & logging** — Databricks SQL Analytics + structured logging
+- [ ] **Error handling** — Comprehensive try/except + user-friendly error messages
+
+#### Long-Term (3-6 Months)
+
+- [ ] **Multi-agent support** — Integrate with Cursor, Codex, Copilot (not just Entire CLI)
+- [ ] **Team features** — Shared workspaces, comments, annotations on checkpoints
+- [ ] **Advanced analytics** — Dead-end prediction, requirement prioritization, effort estimation
+- [ ] **IDE integration** — VS Code extension for in-editor checkpoint insights
+- [ ] **Mobile app** — View checkpoints and requirements on the go
+- [ ] **Enterprise features** — SSO, audit logs, compliance reporting
+
+### Architecture Readiness
+
+Our system is **curveball-ready** and **extensible**:
+
+- ✅ Modular feature design (each feature is independent)
+- ✅ Flexible schema (easy to add new tables to Supabase + Databricks)
+- ✅ Pipeline glue (can sync new data sources)
+- ✅ UI panels (can add 6th panel easily)
+- ✅ 8/8 tests passing (stable foundation for new features)
+
+**If given more time:** Curveball and advanced features can be added on top of this stable foundation without breaking existing functionality.
 
 ## 🏆 Best Use of Databricks (Optional Track)
 
