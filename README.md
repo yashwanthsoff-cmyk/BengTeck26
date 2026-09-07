@@ -20,13 +20,13 @@ AI coding tools lose context between sessions. Developers cannot:
 
 A **checkpoint-native system** that captures AI sessions and provides 5 powerful features:
 
-| Feature | Tier | What It Does |
-|---------|------|--------------|
-| **Dead-End Registry** | Special | Tracks abandoned AI approaches + root causes in MLflow and Delta Lake |
-| **Requirement Ledger** | Advanced | Unfinished requirements across checkpoints with supersession tracking |
-| **Intent Conformance** | Core | Maps what was asked in prompts vs what was built in code diffs |
-| **Resume Contract** | Nuclear | Synthesizes all context to resume work safely in a JSON briefing contract |
-| **Integrity Check** | Intelligence Resilience | Validates session memory coverage for safe resumes with human feedback loop |
+| Feature |  What It Does |
+|---------|--------------|
+| **Dead-End Registry** | Tracks abandoned AI approaches + root causes in MLflow and Delta Lake |
+| **Requirement Ledger** | Unfinished requirements across checkpoints with supersession tracking |
+| **Intent Conformance** | Maps what was asked in prompts vs what was built in code diffs |
+| **Resume Contract** | Synthesizes all context to resume work safely in a JSON briefing contract |
+| **Integrity Check** | Validates session memory coverage for safe resumes with human feedback loop |
 
 ---
 
