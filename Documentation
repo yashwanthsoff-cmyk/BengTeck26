@@ -4,7 +4,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Executive Summary](#executive-summary)
 2. [Problem Statement](#problem-statement)
@@ -25,7 +25,7 @@
 
 **Project Name**: Checkpoint-Native DX  
 **Track**: Checkpoint-Native Development Experience  
-**Status**: ✅ Complete & Verified  
+**Status**: Complete & Verified  
 **GitHub**: https://github.com/yashwanthsoff-cmyk/BengTeck26  
 **Latest Checkpoint**: `01M1TWB9RANKAF8EPSTY7JRYE1`
 
@@ -35,12 +35,12 @@ A checkpoint-native system that captures AI coding sessions and provides dead-en
 
 ### Key Achievements
 
-- ✅ 5 features implemented and working
-- ✅ Real ULID checkpoint IDs (26-char format)
-- ✅ 23 rows in Supabase, 13 Delta tables in Databricks
-- ✅ 8/8 unit tests passing
-- ✅ Comprehensive verification suite
-- ✅ Live Streamlit UI at http://localhost:8501
+- 5 features implemented and working
+- Real ULID checkpoint IDs (26-char format)
+- 23 rows in Supabase, 13 Delta tables in Databricks
+- 8/8 unit tests passing
+- Comprehensive verification suite
+- Live Streamlit UI at http://localhost:8501
 
 ---
 
@@ -80,11 +80,11 @@ AI coding tools create a critical workflow problem:
 
 | # | Feature | Tier | Description | Status |
 |---|---------|------|-------------|--------|
-| 1 | **Dead-End Registry** | Special | Tracks abandoned AI approaches + root causes | ✅ Working |
-| 2 | **Requirement Ledger** | Advanced | Unfinished requirements across checkpoints | ✅ Working |
-| 3 | **Intent Conformance** | Core | Maps what was asked vs what was built | ✅ Working |
-| 4 | **Resume Contract** | Nuclear | Synthesizes all context to resume safely | ✅ Working |
-| 5 | **Integrity Check** | Intelligence Resilience | Validates session memory for resume safety | ✅ Working |
+| 1 | **Dead-End Registry** | Special | Tracks abandoned AI approaches + root causes | Working |
+| 2 | **Requirement Ledger** | Advanced | Unfinished requirements across checkpoints | Working |
+| 3 | **Intent Conformance** | Core | Maps what was asked vs what was built | Working |
+| 4 | **Resume Contract** | Nuclear | Synthesizes all context to resume safely | Working |
+| 5 | **Integrity Check** | Intelligence Resilience | Validates session memory for resume safety | Working |
 
 ### Evidence
 
@@ -299,10 +299,10 @@ Final Implementation:
 
 Our system is **curveball-ready**:
 
-- ✅ Modular feature design (each feature independent)
-- ✅ Flexible schema (easy to add tables)
-- ✅ Pipeline glue (can sync new data sources)
-- ✅ UI panels (can add 6th panel easily)
+- Modular feature design (each feature independent)
+- Flexible schema (easy to add tables)
+- Pipeline glue (can sync new data sources)
+- UI panels (can add 6th panel easily)
 
 ### If We Had Implemented
 
@@ -535,11 +535,11 @@ python scripts/comprehensive_verification.py
 
 **Expected Output**:
 ```
-✅ Supabase: 23 total rows across 8 tables
-✅ Databricks: 3 checkpoints, 13 Delta tables
-✅ Groq: API working
-✅ Features A-E: All functional
-✅ UI: app.py ready
+Supabase: 23 total rows across 8 tables
+Databricks: 3 checkpoints, 13 Delta tables
+Groq: API working
+Features A-E: All functional
+UI: app.py ready
 ```
 
 ### Step 7: Launch UI
@@ -852,12 +852,12 @@ git status
 **Built for BengTeck26 Buildathon**  
 **Developer**: Yashwanth (@yashwanthsoff-cmyk)  
 **Date**: September 06, 2026  
-**Status**: ✅ READY FOR SUBMISSION
+**Status**: READY FOR SUBMISSION
 ```
 
 ***
 
-## ✅ COMMIT THIS FILE
+## COMMIT THIS FILE
 
 ```bash
 git add BUILDATHON.md
@@ -865,4 +865,4 @@ git commit -m "docs: well-structured master BUILDATHON.md" -m "Entire-Checkpoint
 git push origin main
 ```
 
-**Done!** You now have professional, well-structured documentation. Submit with confidence! 🚀
+**Done!** You now have professional, well-structured documentation. Submit with confidence!

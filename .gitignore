@@ -3,6 +3,7 @@ config.py
 .env
 *.env
 scratch/
+*.db
 
 # Python
 __pycache__/

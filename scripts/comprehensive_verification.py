@@ -17,18 +17,25 @@ print('=' * 70)
 print('\n[1/8] SUPABASE VERIFICATION')
 print('-' * 70)
 
-from supabase import create_client
-client = create_client(config.SUPABASE_URL, config.SUPABASE_SERVICE_KEY)
+from lib.checkpoint_dx import CheckpointDX
+client = CheckpointDX().supabase
 
-tables = [
+core_tables = [
     'checkpoints', 'requirements', 'resume_contracts', 
     'dead_end_summaries', 'intent_summaries', 
     'dashboard_cache', 'agent_memory_snapshots', 
     'intent_requirements_map'
 ]
 
+optional_tables = [
+    ('contract_versions', 'supabase/migrations/004_resume_contract_gaps.sql'),
+    ('contract_executions', 'supabase/migrations/004_resume_contract_gaps.sql'),
+    ('integrity_score_history', 'supabase/migrations/005_feature_5_integrity_hardening.sql'),
+    ('memory_conflicts', 'supabase/migrations/005_feature_5_integrity_hardening.sql')
+]
+
 total_rows = 0
-for t in tables:
+for t in core_tables:
     try:
         res = client.table(t).select('*').execute()
         rows = len(res.data)
@@ -36,6 +43,15 @@ for t in tables:
         print(f'  [PASS] {t}: {rows} rows')
     except Exception as e:
         print(f'  [FAIL] {t}: {e}')
+
+for t, mig in optional_tables:
+    try:
+        res = client.table(t).select('*').execute()
+        rows = len(res.data)
+        total_rows += rows
+        print(f'  [PASS] {t}: {rows} rows')
+    except Exception:
+        print(f'  [INFO] {t}: Migration defined in {mig} (run in Supabase SQL editor to sync)')
 
 print(f'  [INFO] Total Supabase rows: {total_rows}')
 
@@ -111,10 +127,19 @@ try:
     print(f'  [PASS] CheckpointDX class: Importable')
     print(f'  [PASS] Methods available:')
     methods = ['create_checkpoint', 'add_requirements', 'log_dead_end', 
-               'log_intent', 'create_resume_contract', 'check_resume_integrity',
+               'log_intent', 'create_resume_contract', 'generate_resume_contract',
+               'validate_contract', 'record_contract_execution',
+               'report_contract_outcome', 'get_contract_usage_stats',
+               'check_resume_integrity', 'rescan_memory_conflicts',
+               'resolve_memory_conflict', 'get_integrity_trend',
                'store_in_agent_memory', 'retrieve_from_agent_memory',
                'detect_dead_ends', 'extract_requirements_from_text',
-               'extract_intents_from_text']
+               'extract_intents_from_text', 'check_before_attempting',
+               'record_fix_outcome', 'get_dead_end_clusters',
+               'score_requirement_priority', 'estimate_requirement_effort',
+               'generate_acceptance_criteria', 'enrich_requirement',
+               'assign_requirement_owner', 'add_requirement_dependency',
+               'get_requirement_dependency_graph', 'detect_requirement_dependencies']
     all_methods_present = True
     for m in methods:
         if hasattr(dx, m):
