@@ -1,7 +1,6 @@
+# app.py — Checkpoint-Native DX (v9) Interactive Dashboard
+# 5-Panel Interface covering Features A, B, C, D, and E.
 import os
-"""app.py — Checkpoint-Native DX (v9) Interactive Dashboard
-5-Panel Interface covering Features A, B, C, D, and E.
-"""
 import streamlit as st
 import json
 import hashlib
@@ -18,61 +17,23 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Load Augen Pro Premium Design System
+# Load Premium UI/UX Design System
+import os
+
 css_path = os.path.join(os.path.dirname(__file__), "assets", "style.css")
 if os.path.exists(css_path):
-    with open(css_path, "r", encoding="utf-8") as f_css:
-        st.markdown(f"<style>{f_css.read()}</style>", unsafe_allow_html=True)
+    with open(css_path, "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# ==========================================================================
-# FLOATING NAV CAPSULE (Augen Pro Numbered Navigation)
-# ==========================================================================
+# Floating Navigation Capsule
 st.markdown("""
-<div class="nav-capsule">
-  <a href="#panel-a">01 Dead-Ends</a>
-  <a href="#panel-b">02 Requirements</a>
-  <a href="#panel-c">03 Intents</a>
-  <a href="#panel-d">04 Contracts</a>
-  <a href="#panel-e">05 Integrity</a>
+<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(255,255,255,0.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(0,0,0,0.08);border-radius:40px;padding:10px 28px;display:flex;gap:24px;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+  <a href="#panel-a" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">01 Dead-Ends</a>
+  <a href="#panel-b" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">02 Requirements</a>
+  <a href="#panel-c" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">03 Intents</a>
+  <a href="#panel-d" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">04 Contracts</a>
+  <a href="#panel-e" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">05 Integrity</a>
 </div>
-""", unsafe_allow_html=True)
-
-
-# Custom CSS styling for premium feel
-st.markdown("""
-<style>
-    .metric-card {
-        background-color: #1E1E2F;
-        border-radius: 8px;
-        padding: 16px;
-        border: 1px solid #2D2D44;
-        margin-bottom: 12px;
-    }
-    .badge-met {
-        background-color: #065F46;
-        color: #6EE7B7;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.85em;
-    }
-    .badge-gap {
-        background-color: #7F1D1D;
-        color: #FCA5A5;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.85em;
-    }
-    .badge-fallback {
-        background-color: #78350F;
-        color: #FCD34D;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.8em;
-    }
-</style>
 """, unsafe_allow_html=True)
 
 
@@ -536,7 +497,7 @@ with tab_b:
     st.markdown('<div id="panel-b"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.2 / Feature B</p>', unsafe_allow_html=True)
     st.markdown('# Requirement Ledger')
-    st.markdown('Checkpoint-scoped requirements with dynamic RICE prioritization and dependency tracking')
+    st.markdown('Checkpoint-scoped requirements with dynamic prioritization')
     st.divider()
 
     # Load requirements for selected checkpoint
@@ -1648,7 +1609,7 @@ with tab_d:
     st.markdown('<div id="panel-d"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.4 / Feature D</p>', unsafe_allow_html=True)
     st.markdown('# Agent Resume Contract')
-    st.markdown('Synthesizes accumulated checkpoint state into portable handoff document')
+    st.markdown('Synthesizes checkpoint state into portable handoff')
     st.divider()
 
     tab_d1, tab_d2, tab_d3, tab_d4 = st.tabs([
@@ -2173,7 +2134,7 @@ with tab_e:
     st.markdown('<div id="panel-e"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.5 / Feature E</p>', unsafe_allow_html=True)
     st.markdown('# Resume Integrity & Agent Memory')
-    st.markdown('Enterprise-grade resume safety verification with multi-session aggregation and trend forecasting')
+    st.markdown('Enterprise-grade resume safety verification')
     st.divider()
 
     # -------------------------------------------------------------------------
