@@ -24,29 +24,16 @@ if os.path.exists(css_path):
     with open(css_path, "r", encoding="utf-8") as f_css:
         st.markdown(f"<style>{f_css.read()}</style>", unsafe_allow_html=True)
 
-# Floating Nav Capsule (Augen Pro Numbered Navigation)
+# ==========================================================================
+# FLOATING NAV CAPSULE (Augen Pro Numbered Navigation)
+# ==========================================================================
 st.markdown("""
-<div style="
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 99999;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 40px;
-  padding: 10px 28px;
-  display: flex;
-  gap: 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-">
-  <a href="#panel-a" style="color: #0071E3; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: -0.01em;">01 Dead-Ends</a>
-  <a href="#panel-b" style="color: #0071E3; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: -0.01em;">02 Requirements</a>
-  <a href="#panel-c" style="color: #0071E3; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: -0.01em;">03 Intents</a>
-  <a href="#panel-d" style="color: #0071E3; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: -0.01em;">04 Contracts</a>
-  <a href="#panel-e" style="color: #0071E3; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: -0.01em;">05 Integrity</a>
+<div class="nav-capsule">
+  <a href="#panel-a">01 Dead-Ends</a>
+  <a href="#panel-b">02 Requirements</a>
+  <a href="#panel-c">03 Intents</a>
+  <a href="#panel-d">04 Contracts</a>
+  <a href="#panel-e">05 Integrity</a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -158,7 +145,8 @@ with tab_a:
     st.markdown('<div id="panel-a"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.1 / Feature A</p>', unsafe_allow_html=True)
     st.markdown('# Dead-End Registry')
-    st.markdown('Surfaces abandoned AI paths, root causes, and suggested alternatives with pre-flight hazard detection.')
+    st.markdown('Tracks abandoned AI approaches + root causes')
+    st.divider()
 
     dead_ends = []
     try:
@@ -548,9 +536,8 @@ with tab_b:
     st.markdown('<div id="panel-b"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.2 / Feature B</p>', unsafe_allow_html=True)
     st.markdown('# Requirement Ledger')
-    st.markdown(
-        "Checkpoint-scoped requirements with dynamic RICE prioritization, Fibonacci effort estimation, and interactive dependency graph."
-    )
+    st.markdown('Checkpoint-scoped requirements with dynamic RICE prioritization and dependency tracking')
+    st.divider()
 
     # Load requirements for selected checkpoint
     reqs = []
@@ -1002,10 +989,8 @@ with tab_c:
     st.markdown('<div id="panel-c"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.3 / Feature C</p>', unsafe_allow_html=True)
     st.markdown('# Intent Conformance')
-    st.markdown(
-        "Maps what was asked vs what got built with semantic clause matching, 8-state implementation classification, "
-        "domain clustering, and 7-day conformance trajectory forecasting."
-    )
+    st.markdown('Maps what was asked vs what got built')
+    st.divider()
 
     # 1. Fetch Intent Records from Delta, Supabase, or SQLite
     intents_data = []
@@ -1663,10 +1648,8 @@ with tab_d:
     st.markdown('<div id="panel-d"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.4 / Feature D</p>', unsafe_allow_html=True)
     st.markdown('# Agent Resume Contract')
-    st.markdown(
-        "Production-grade contract synthesis and enterprise governance platform. Dynamically synthesizes "
-        "unresolved requirements, dead-ends, intent gaps, and resume safety into validated briefing contracts."
-    )
+    st.markdown('Synthesizes accumulated checkpoint state into portable handoff document')
+    st.divider()
 
     tab_d1, tab_d2, tab_d3, tab_d4 = st.tabs([
         "[Contract Synthesis & Dynamic Weighting]",
@@ -2190,7 +2173,8 @@ with tab_e:
     st.markdown('<div id="panel-e"></div>', unsafe_allow_html=True)
     st.markdown('<p class="small-caps">0.5 / Feature E</p>', unsafe_allow_html=True)
     st.markdown('# Resume Integrity & Agent Memory')
-    st.markdown("Enterprise-grade resume safety verification with multi-session aggregation, 7-day trend forecasting, automated memory cleanup, statistical anomaly detection, and root-cause diagnosis.")
+    st.markdown('Enterprise-grade resume safety verification with multi-session aggregation and trend forecasting')
+    st.divider()
 
     # -------------------------------------------------------------------------
     # SECTION 1: Multi-Session Integrity Aggregation & 7-Day Forecast

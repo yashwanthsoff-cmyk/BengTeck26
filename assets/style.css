@@ -1,7 +1,17 @@
-/* Import premium fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+/* ==========================================================================
+   AUGEN PRO PREMIUM DESIGN SYSTEM
+   Version: 1.0.0
+   Purpose: Transform Streamlit into world-class production UI
+   ========================================================================== */
 
-/* Design tokens */
+/* --------------------------------------------------------------------------
+   1. IMPORT PREMIUM FONTS
+   -------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* --------------------------------------------------------------------------
+   2. DESIGN TOKENS (CSS Custom Properties)
+   -------------------------------------------------------------------------- */
 :root {
   /* Colors */
   --color-block-light: #FFFFFF;
@@ -15,7 +25,10 @@
   --color-text-muted: #C5C5C5;
   --color-surface: #F2F2F4;
   --color-border: rgba(0,0,0,0.08);
-
+  --color-border-hover: rgba(0,0,0,0.12);
+  --color-shadow: rgba(0,0,0,0.08);
+  --color-shadow-hover: rgba(0,0,0,0.12);
+  
   /* Spacing */
   --space-4: 4px;
   --space-8: 8px;
@@ -30,17 +43,30 @@
   --space-80: 80px;
   --space-96: 96px;
   --space-120: 120px;
-
+  
   /* Typography */
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   --type-display-large: 72px;
   --type-display-medium: 48px;
   --type-display-small: 36px;
+  --type-heading-large: 32px;
+  --type-heading-medium: 24px;
+  --type-heading-small: 20px;
   --type-body: 16px;
+  --type-body-small: 14px;
   --type-micro: 12px;
-
-  /* Radius */
+  --type-micro-small: 11px;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.6;
+  --letter-spacing-tight: -0.04em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.05em;
+  --letter-spacing-wider: 0.1em;
+  --letter-spacing-widest: 0.15em;
+  
+  /* Border Radius */
   --radius-0: 0;
   --radius-4: 4px;
   --radius-8: 8px;
@@ -49,168 +75,397 @@
   --radius-24: 24px;
   --radius-40: 40px;
   --radius-9999: 9999px;
-
+  
+  /* Borders */
+  --border-width: 1px;
+  --border-style: solid;
+  --border-color: var(--color-border);
+  --border-color-hover: var(--color-border-hover);
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px var(--color-shadow);
+  --shadow-md: 0 4px 8px var(--color-shadow);
+  --shadow-lg: 0 8px 16px var(--color-shadow);
+  --shadow-xl: 0 12px 24px var(--color-shadow);
+  --shadow-hover: 0 12px 24px var(--color-shadow-hover);
+  
   /* Motion */
+  --duration-100: 100ms;
+  --duration-200: 200ms;
   --duration-300: 300ms;
   --duration-500: 500ms;
   --duration-700: 700ms;
+  --duration-1000: 1000ms;
   --easing-primary: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --easing-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --easing-leave: cubic-bezier(0.7, 0, 0.84, 0);
+  
+  /* Z-Index Scale */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-notification: 800;
+  --z-nav-capsule: 99999;
 }
 
-/* Reset Streamlit defaults */
+/* --------------------------------------------------------------------------
+   3. RESET STREAMLIT DEFAULTS
+   -------------------------------------------------------------------------- */
 .stApp {
   background: var(--color-block-light);
   font-family: var(--font-display);
   color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography hierarchy */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 400;
-  letter-spacing: -0.04em;
-  line-height: 1.2;
-  margin-bottom: var(--space-24);
+/* Remove default Streamlit padding */
+.block-container {
+  padding-top: var(--space-96);
+  padding-bottom: var(--space-80);
 }
 
+/* --------------------------------------------------------------------------
+   4. TYPOGRAPHY HIERARCHY
+   -------------------------------------------------------------------------- */
+
+/* Display Headings (Hero sections) */
 h1 {
   font-size: var(--type-display-large);
+  font-weight: 300;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-24);
+  color: var(--color-text-primary);
 }
 
 h2 {
   font-size: var(--type-display-medium);
+  font-weight: 400;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-24);
+  color: var(--color-text-primary);
 }
 
 h3 {
   font-size: var(--type-display-small);
+  font-weight: 400;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-20);
+  color: var(--color-text-primary);
 }
 
+/* Section Headings */
+.stMarkdown h4 {
+  font-size: var(--type-heading-large);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-16);
+  color: var(--color-text-primary);
+}
+
+.stMarkdown h5 {
+  font-size: var(--type-heading-medium);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-normal);
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-12);
+  color: var(--color-text-primary);
+}
+
+.stMarkdown h6 {
+  font-size: var(--type-heading-small);
+  font-weight: 500;
+  letter-spacing: var(--letter-spacing-normal);
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-12);
+  color: var(--color-text-primary);
+}
+
+/* Body Text */
 p {
   font-size: var(--type-body);
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
-  max-width: 650px;
+  max-width: 65ch;
+  margin-bottom: var(--space-16);
 }
 
-/* Micro-labels */
+/* Small Body Text */
+.small-text {
+  font-size: var(--type-body-small);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+}
+
+/* Micro Labels (Badges, captions, indices) */
 .small-caps {
   font-size: var(--type-micro);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--letter-spacing-widest);
   color: var(--color-text-muted);
   font-weight: 500;
+  margin-bottom: var(--space-12);
+  display: block;
 }
 
-/* Cards */
-.stMarkdown > div {
-  border: 1px solid var(--color-border);
+/* Code / Monospace */
+code, pre, .stCode {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: var(--line-height-normal);
+}
+
+/* --------------------------------------------------------------------------
+   5. CARDS & CONTAINERS
+   -------------------------------------------------------------------------- */
+
+/* Card Styling */
+.stMarkdown > div,
+.st-container > div {
+  border: var(--border-width) var(--border-style) var(--color-border);
   border-radius: var(--radius-12);
   padding: var(--space-32);
   margin: var(--space-24) 0;
   background: var(--color-surface);
-  transition: transform var(--duration-300) var(--easing-primary), box-shadow var(--duration-300) var(--easing-primary);
+  transition: 
+    transform var(--duration-300) var(--easing-primary),
+    box-shadow var(--duration-300) var(--easing-primary),
+    border-color var(--duration-300) var(--easing-primary);
 }
 
-.stMarkdown > div:hover {
+/* Card Hover Effect */
+.stMarkdown > div:hover,
+.st-container > div:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--color-border-hover);
 }
 
-/* Buttons */
+/* Hover Lift Utility Class */
+.hover-lift {
+  transition: transform var(--duration-300) var(--easing-primary), box-shadow var(--duration-300) var(--easing-primary);
+  border: var(--border-width) var(--border-style) var(--color-border);
+  border-radius: var(--radius-12);
+  padding: var(--space-16);
+  margin-bottom: var(--space-12);
+  background: var(--color-block-light);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-accent);
+}
+
+/* --------------------------------------------------------------------------
+   6. BUTTONS
+   -------------------------------------------------------------------------- */
+
+/* Primary Button (Outlined Style) */
 .stButton > button {
-  border: 1px solid var(--color-accent);
+  border: var(--border-width) var(--border-style) var(--color-accent);
   border-radius: var(--radius-40);
   padding: var(--space-12) var(--space-32);
   color: var(--color-accent);
   background: transparent;
   font-weight: 500;
-  transition: all var(--duration-300) var(--easing-primary);
+  font-size: var(--type-body);
+  font-family: var(--font-display);
+  letter-spacing: var(--letter-spacing-normal);
+  cursor: pointer;
+  transition: 
+    all var(--duration-300) var(--easing-primary),
+    background var(--duration-300) var(--easing-primary),
+    color var(--duration-300) var(--easing-primary);
 }
 
+/* Button Hover */
 .stButton > button:hover {
   background: var(--color-accent);
   color: white;
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-accent);
 }
 
-/* Inputs */
+/* Button Active/Pressed */
+.stButton > button:active {
+  background: var(--color-accent-pressed);
+  border-color: var(--color-accent-pressed);
+  transform: translateY(0);
+}
+
+/* Button Focus */
+.stButton > button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   7. INPUTS
+   -------------------------------------------------------------------------- */
+
+/* Text Inputs, Selectboxes, Number Inputs */
 .stTextInput > div > input,
 .stSelectbox > div > select,
-.stNumberInput > div > input {
-  border: 1px solid var(--color-border);
+.stNumberInput > div > input,
+.stTextArea > div > textarea {
+  border: var(--border-width) var(--border-style) var(--color-border);
   border-radius: var(--radius-8);
   padding: var(--space-12) var(--space-16);
   font-size: var(--type-body);
-  transition: border-color var(--duration-300) var(--easing-primary);
+  font-family: var(--font-display);
+  color: var(--color-text-primary);
+  background: var(--color-block-light);
+  transition: 
+    border-color var(--duration-300) var(--easing-primary),
+    box-shadow var(--duration-300) var(--easing-primary);
 }
 
+/* Input Focus */
 .stTextInput > div > input:focus,
 .stSelectbox > div > select:focus,
-.stNumberInput > div > input:focus {
+.stNumberInput > div > input:focus,
+.stTextArea > div > textarea:focus {
   border-color: var(--color-accent);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
 }
 
-/* Metrics */
+/* Input Hover */
+.stTextInput > div > input:hover,
+.stSelectbox > div > select:hover,
+.stNumberInput > div > input:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* Placeholder Styling */
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   8. METRICS
+   -------------------------------------------------------------------------- */
+
 .stMetric {
   padding: var(--space-24);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) var(--border-style) var(--color-border);
   border-radius: var(--radius-12);
   background: var(--color-surface);
+  transition: 
+    transform var(--duration-300) var(--easing-primary),
+    box-shadow var(--duration-300) var(--easing-primary);
+}
+
+.stMetric:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .stMetric label {
   font-size: var(--type-micro);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: var(--letter-spacing-widest);
   color: var(--color-text-muted);
+  font-weight: 500;
+  margin-bottom: var(--space-8);
 }
 
 .stMetric div {
   font-size: var(--type-display-small);
   font-weight: 300;
+  color: var(--color-text-primary);
 }
 
-/* Expanders */
+/* --------------------------------------------------------------------------
+   9. EXPANDERS
+   -------------------------------------------------------------------------- */
+
 .streamlit-expanderHeader {
   font-weight: 500;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--letter-spacing-tight);
   padding: var(--space-16) var(--space-24);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) var(--border-style) var(--color-border);
   border-radius: var(--radius-8);
   background: var(--color-surface);
-  transition: all var(--duration-300) var(--easing-primary);
+  transition: 
+    all var(--duration-300) var(--easing-primary),
+    border-color var(--duration-300) var(--easing-primary);
 }
 
 .streamlit-expanderHeader:hover {
   border-color: var(--color-accent);
+  background: var(--color-block-light);
 }
 
-/* Section spacing */
+.streamlit-expanderContent {
+  padding: var(--space-24);
+  border: var(--border-width) var(--border-style) var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-8) var(--radius-8);
+  background: var(--color-block-light);
+}
+
+/* --------------------------------------------------------------------------
+   10. SECTION SPACING
+   -------------------------------------------------------------------------- */
+
 .stVerticalBlock {
   padding: var(--space-80) 0;
 }
 
-/* Divider */
+.stVerticalBlock > div:first-child {
+  padding-top: 0;
+}
+
+/* --------------------------------------------------------------------------
+   11. DIVIDERS
+   -------------------------------------------------------------------------- */
+
 hr {
   border: none;
-  border-top: 1px solid var(--color-border);
+  border-top: var(--border-width) var(--border-style) var(--color-border);
   margin: var(--space-64) 0;
 }
 
-/* Code blocks */
-pre {
-  border: 1px solid var(--color-border);
+/* --------------------------------------------------------------------------
+   12. CODE BLOCKS
+   -------------------------------------------------------------------------- */
+
+pre, .stCode > div {
+  border: var(--border-width) var(--border-style) var(--color-border);
   border-radius: var(--radius-8);
   padding: var(--space-24);
   background: var(--color-block-black);
   color: #F2F2F4;
   font-family: var(--font-mono);
   font-size: 14px;
+  line-height: var(--line-height-normal);
   overflow-x: auto;
 }
 
-/* Tables */
+pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   13. TABLES
+   -------------------------------------------------------------------------- */
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -218,9 +473,11 @@ table {
 }
 
 th, td {
-  border: 1px solid var(--color-border);
+  border: var(--border-width) var(--border-style) var(--color-border);
   padding: var(--space-16);
   text-align: left;
+  font-size: var(--type-body);
+  color: var(--color-text-primary);
 }
 
 th {
@@ -228,10 +485,22 @@ th {
   background: var(--color-surface);
   font-size: var(--type-micro);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--letter-spacing-wider);
+  color: var(--color-text-secondary);
 }
 
-/* Badges */
+tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+tr:hover {
+  background: rgba(0, 113, 227, 0.05);
+}
+
+/* --------------------------------------------------------------------------
+   14. BADGES
+   -------------------------------------------------------------------------- */
+
 .badge {
   display: inline-block;
   padding: var(--space-4) var(--space-12);
@@ -239,40 +508,176 @@ th {
   font-size: var(--type-micro);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--letter-spacing-wider);
+  line-height: 1;
 }
 
-.badge-critical {
-  background: #FF5A5F;
-  color: white;
+.badge-critical { 
+  background: #FF5A5F; 
+  color: white; 
 }
 
-.badge-major {
-  background: #FFB020;
-  color: black;
+.badge-major { 
+  background: #FFB020; 
+  color: black; 
 }
 
-.badge-minor {
-  background: #2DD36F;
-  color: black;
+.badge-minor { 
+  background: #2DD36F; 
+  color: black; 
 }
 
-.badge-safe {
-  background: #0071E3;
-  color: white;
+.badge-safe { 
+  background: #0071E3; 
+  color: white; 
 }
 
-.badge-warning {
-  background: #FFB020;
-  color: black;
+.badge-warning { 
+  background: #FFB020; 
+  color: black; 
 }
 
-.badge-blocked {
-  background: #C5C5C5;
-  color: black;
+.badge-blocked { 
+  background: #C5C5C5; 
+  color: black; 
 }
 
-/* Progressive-dim numbered list */
+.badge-info { 
+  background: #0071E3; 
+  color: white; 
+}
+
+.badge-success { 
+  background: #2DD36F; 
+  color: black; 
+}
+
+/* Legacy & Component Badges */
+.badge-met {
+  background-color: #065F46;
+  color: #6EE7B7;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-40);
+  font-weight: 600;
+  font-size: var(--type-micro);
+  text-transform: uppercase;
+}
+
+.badge-gap {
+  background-color: #7F1D1D;
+  color: #FCA5A5;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-40);
+  font-weight: 600;
+  font-size: var(--type-micro);
+  text-transform: uppercase;
+}
+
+.badge-fallback {
+  background-color: #78350F;
+  color: #FCD34D;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-40);
+  font-weight: 600;
+  font-size: var(--type-micro);
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------------------
+   15. LINKS
+   -------------------------------------------------------------------------- */
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--duration-300) var(--easing-primary);
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   16. FOCUS STATES (Accessibility)
+   -------------------------------------------------------------------------- */
+
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-4);
+}
+
+/* Remove default focus outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   17. RESPONSIVE DESIGN
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  :root {
+    --type-display-large: 42px;
+    --type-display-medium: 36px;
+    --type-display-small: 30px;
+    --type-heading-large: 28px;
+    --type-heading-medium: 22px;
+    --type-heading-small: 18px;
+  }
+  
+  .stVerticalBlock {
+    padding: var(--space-40) 0;
+  }
+  
+  .block-container {
+    padding-top: var(--space-64);
+    padding-bottom: var(--space-40);
+  }
+  
+  .stMarkdown > div,
+  .stMetric,
+  .streamlit-expanderHeader {
+    padding: var(--space-20);
+  }
+  
+  .stButton > button {
+    padding: var(--space-10) var(--space-24);
+    font-size: var(--type-body-small);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   18. ACCESSIBILITY (Reduced Motion)
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   19. UTILITY CLASSES
+   -------------------------------------------------------------------------- */
+
+/* Text Alignment */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+/* Font Weights */
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Opacity Transitions (for progressive dim) */
 .numbered-list-item {
   opacity: 0.5;
   transition: opacity var(--duration-300) var(--easing-primary);
@@ -282,48 +687,59 @@ th {
   opacity: 1.0;
 }
 
-/* Hover effects */
-.hover-lift {
-  transition: transform var(--duration-300) var(--easing-primary);
+/* --------------------------------------------------------------------------
+   20. FLOATING NAV CAPSULE STYLES
+   -------------------------------------------------------------------------- */
+
+.nav-capsule {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-nav-capsule);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: var(--border-width) var(--border-style) rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-40);
+  padding: var(--space-10) var(--space-28);
+  display: flex;
+  gap: var(--space-24);
+  box-shadow: var(--shadow-lg);
+  transition: 
+    box-shadow var(--duration-300) var(--easing-primary),
+    transform var(--duration-300) var(--easing-primary);
 }
 
-.hover-lift:hover {
-  transform: translateY(-4px);
+.nav-capsule:hover {
+  box-shadow: var(--shadow-xl);
 }
 
-/* Focus rings */
-*:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-4);
+.nav-capsule a {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: var(--letter-spacing-tight);
+  transition: 
+    color var(--duration-300) var(--easing-primary),
+    transform var(--duration-300) var(--easing-primary);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  :root {
-    --type-display-large: 42px;
-    --type-display-medium: 36px;
-    --type-display-small: 30px;
-  }
-  
-  .stVerticalBlock {
-    padding: var(--space-40) 0;
-  }
-  
-  .stMarkdown > div,
-  .stMetric,
-  .streamlit-expanderHeader {
-    padding: var(--space-20);
-  }
+.nav-capsule a:hover {
+  color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  text-decoration: none;
 }
 
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+/* --------------------------------------------------------------------------
+   21. PANEL ANCHORS (for nav capsule deep linking)
+   -------------------------------------------------------------------------- */
+
+#panel-a, #panel-b, #panel-c, #panel-d, #panel-e {
+  scroll-margin-top: var(--space-120);
 }
+
+/* ==========================================================================
+   END OF AUGEN PRO DESIGN SYSTEM
+   ========================================================================== */
