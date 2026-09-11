@@ -1,194 +1,204 @@
 /* ==========================================================================
-   PREMIUM UI/UX DESIGN SYSTEM - PROFESSIONAL GRADE
-   Version: 1.0.0
-   Purpose: Transform Streamlit into world-class dashboard
-   Author: Augen Pro Design System
+   MASTER UI/UX DESIGN SYSTEM
+   Professional Humanist & Technical Design Architecture
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. IMPORT PREMIUM FONTS FROM GOOGLE FONTS
+   0. PREMIUM TYPOGRAPHY IMPORT
    -------------------------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* --------------------------------------------------------------------------
-   2. DESIGN TOKENS - CSS VARIABLES FOR CONSISTENCY
+   1. DESIGN TOKENS (FOUNDATION - REFERENCED EVERYWHERE)
    -------------------------------------------------------------------------- */
 :root {
-  --bg: #FFFFFF;                  /* Main background alias */
-  --surface: #F2F2F4;             /* Light gray - card backgrounds */
-  --accent: #0071E3;              /* Apple-style accent blue */
-  --text: #0B0B0C;                /* Primary text alias */
-  --accent-hover: #2A8CFF;        /* Lighter blue for hover states */
-  --accent-pressed: #005BB5;      /* Darker blue for active states */
-  --text-primary: #0B0B0C;        /* Almost black - primary text */
-  --text-secondary: #6E6E73;      /* Medium gray - secondary text */
-  --text-muted: #C5C5C5;          /* Light gray - muted/placeholder */
-  --border: rgba(0,0,0,0.08);     /* Very subtle border */
-  --border-hover: rgba(0,0,0,0.12); /* Slightly darker on hover */
-  --background: #FFFFFF;          /* Pure white - main background */
-  --shadow: rgba(0,0,0,0.08);     /* Subtle shadow */
-  --shadow-hover: rgba(0,0,0,0.12); /* Darker shadow on hover */
-  
-  /* Typography - Font families */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  
-  /* Typography - Font sizes */
-  --type-display-large: 48px;     /* H1 headings */
-  --type-display-medium: 36px;    /* H2 headings */
-  --type-display-small: 24px;     /* H3 headings */
-  --type-body: 16px;              /* Body text */
-  --type-body-small: 14px;        /* Small body text */
-  --type-micro: 11px;             /* Labels, badges, captions */
-  
-  /* Typography - Line heights */
-  --line-height-tight: 1.2;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.6;
-  
-  /* Typography - Letter spacing */
-  --letter-spacing-tight: -0.04em;  /* Headings */
-  --letter-spacing-normal: 0;       /* Body */
-  --letter-spacing-wide: 0.05em;    /* Uppercase labels */
-  --letter-spacing-wider: 0.1em;
-  --letter-spacing-widest: 0.15em;  /* Small-caps */
-  
-  /* Spacing - Based on 8px grid system */
+  /* Spacing scale (8pt base) */
   --space-4: 4px;
   --space-8: 8px;
   --space-12: 12px;
   --space-16: 16px;
-  --space-20: 20px;
   --space-24: 24px;
   --space-32: 32px;
-  --space-40: 40px;
   --space-48: 48px;
   --space-64: 64px;
-  
-  /* Border radius - Rounded corners */
-  --radius-4: 4px;      /* Subtle rounding */
-  --radius-8: 8px;      /* Standard rounding */
-  --radius-12: 12px;    /* Card rounding */
-  --radius-16: 16px;    /* Large rounding */
-  --radius-40: 40px;    /* Pill buttons, badges */
-  --radius-9999: 9999px; /* Full circle */
-  
-  /* Borders */
-  --border-width: 1px;
-  --border-style: solid;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px var(--shadow);
-  --shadow-md: 0 4px 8px var(--shadow);
-  --shadow-lg: 0 8px 16px var(--shadow);
-  --shadow-xl: 0 12px 24px var(--shadow);
-  
-  /* Transitions */
-  --duration-100: 100ms;
-  --duration-200: 200ms;
-  --duration-300: 300ms;
-  --duration-500: 500ms;
-  --easing-primary: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --space-80: 80px;
+  --space-120: 120px;
+
+  /* Radius scale */
+  --radius-sm: 12px;   /* inputs, small chips, skeleton blocks */
+  --radius-md: 16px;   /* toasts, tiles, alert banners */
+  --radius-lg: 28px;   /* cards, panels, modals */
+  --radius-pill: 40px; /* buttons, badges, tabs, navbars */
+  --radius-circle: 50%;/* avatars, dots, fab buttons */
+
+  /* Z-index layering */
+  --z-base: 0;
+  --z-sticky-header: 100;
+  --z-sidebar: 200;
+  --z-dropdown: 300;
+  --z-tooltip: 400;
+  --z-toast: 500;
+  --z-modal-backdrop: 600;
+  --z-modal: 610;
+  --z-cursor: 9999;
+
+  /* Typography fonts */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Color system */
+  --bg-primary: #FDFDFD;
+  --bg-surface: #F2F2F4;
+  --bg-surface-hover: #EBEBED;
+  --bg-glass: rgba(255, 255, 255, 0.06);
+  --bg-glass-solid: rgba(253, 253, 253, 0.85);
+  --bg-inverse: #0F1012;
+
+  --accent-primary: #0071E3;   /* info / neutral action */
+  --accent-danger:  #E3001E;   /* critical / alert */
+  --accent-success: #00A651;   /* positive / confirm */
+  --accent-warning: #F5A623;   /* caution */
+
+  --text-primary: #0F1012;
+  --text-secondary: #8F8F8F;
+  --text-inverse: #FDFDFD;
+
+  --border-dim: rgba(15, 16, 18, 0.08);
+  --border-light: rgba(255, 255, 255, 0.6);
+  --shadow-glass: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* Unified tokens */
+  --bg: var(--bg-primary);
+  --surface: var(--bg-surface);
+  --accent: var(--accent-primary);
+  --text: var(--text-primary);
+  --font-sans: var(--font-primary);
 }
 
 /* --------------------------------------------------------------------------
-   3. RESET STREAMLIT DEFAULTS
+   2. GLOBAL TYPOGRAPHY & RESET
    -------------------------------------------------------------------------- */
-.stApp {
-  background: var(--background);
-  font-family: var(--font-display);
+html, body, .stApp {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 300 !important;
+  font-size: 17px !important;
+  line-height: 1.7 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Background Treatment: Subtle graph-paper grid with radial mask */
+.stApp::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    linear-gradient(rgba(15, 16, 18, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 16, 18, 0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  pointer-events: none;
+  z-index: var(--z-base);
+}
+
+/* Typography scale */
+h1, .stMarkdown h1 {
+  font-family: var(--font-primary) !important;
+  font-size: clamp(36px, 5vw, 72px) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.035em !important;
+  line-height: 1.2 !important;
+  color: var(--text-primary) !important;
+  margin-top: var(--space-24) !important;
+  margin-bottom: var(--space-8) !important;
+}
+
+h2, .stMarkdown h2 {
+  font-family: var(--font-primary) !important;
+  font-size: clamp(24px, 3vw, 36px) !important;
+  font-weight: 300 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.3 !important;
+  color: var(--text-primary) !important;
+  margin-top: var(--space-24) !important;
+  margin-bottom: var(--space-8) !important;
+}
+
+h3, .stMarkdown h3 {
+  font-family: var(--font-primary) !important;
+  font-size: 20px !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.015em !important;
+  color: var(--text-primary) !important;
+  margin-top: var(--space-16) !important;
+  margin-bottom: var(--space-8) !important;
+}
+
+p, span, label {
+  font-family: var(--font-primary);
+  font-weight: 300;
   color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Remove excessive Streamlit padding */
-.block-container {
-  padding-top: 5rem;
-  padding-bottom: 3rem;
-}
-
-/* --------------------------------------------------------------------------
-   4. TYPOGRAPHY - HEADINGS
-   -------------------------------------------------------------------------- */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 400;
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
-  color: var(--text-primary);
-  margin-bottom: var(--space-24);
-}
-
-h1 {
-  font-size: var(--type-display-large);
-  margin-bottom: var(--space-32);
-}
-
-h2 {
-  font-size: var(--type-display-medium);
-  margin-bottom: var(--space-24);
-}
-
-h3 {
-  font-size: var(--type-display-small);
-  margin-bottom: var(--space-20);
+.eyebrow,
+p.small-caps {
+  font-family: var(--font-primary) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.10em !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: var(--space-4) !important;
+  margin-top: 0 !important;
 }
 
 /* --------------------------------------------------------------------------
-   5. TYPOGRAPHY - BODY TEXT
+   3. SURFACES / CARDS (ALL PANELS, TILES & METRIC CARDS)
    -------------------------------------------------------------------------- */
-p {
-  font-size: var(--type-body);
-  line-height: var(--line-height-relaxed);
-  color: var(--text-secondary);
-  max-width: 65ch;
-  margin-bottom: var(--space-16);
+.glass-card,
+div[data-testid="stMetric"],
+.metric-card,
+.streamlit-expanderContent,
+div[data-testid="stExpander"] {
+  background: var(--bg-glass-solid) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border: 1px solid var(--border-dim) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-glass) !important;
+  transform: translateZ(0);
+  transition: transform 0.4s cubic-bezier(0.2, 1, 0.3, 1) !important;
+  padding: var(--space-24) !important;
 }
 
-/* --------------------------------------------------------------------------
-   6. MICRO-LABELS (SMALL-CAPS FOR SECTION INDICES)
-   -------------------------------------------------------------------------- */
-.small-caps {
-  font-size: var(--type-micro);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-widest);
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-bottom: var(--space-12);
-  display: block;
+div[data-testid="stMetric"]:hover,
+.glass-card:hover {
+  transform: perspective(800px) rotateX(1deg) rotateY(1deg) scale(1.01) !important;
 }
 
-/* --------------------------------------------------------------------------
-   7. CARDS AND CONTAINERS
-   -------------------------------------------------------------------------- */
-.stMarkdown > div,
-.st-container > div {
-  border: var(--border-width) var(--border-style) var(--border);
-  border-radius: var(--radius-12);
-  padding: var(--space-32);
-  margin: var(--space-24) 0;
-  background: var(--surface);
-  transition: 
-    transform var(--duration-300) var(--easing-primary),
-    box-shadow var(--duration-300) var(--easing-primary),
-    border-color var(--duration-300) var(--easing-primary);
+/* Inverse Card Variant */
+.card-inverse {
+  background: var(--bg-inverse) !important;
+  color: var(--text-inverse) !important;
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-dim) !important;
+  box-shadow: var(--shadow-glass) !important;
+  padding: var(--space-24) !important;
 }
 
-/* Card hover effect - lifts up */
-.stMarkdown > div:hover,
-.st-container > div:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  border-color: var(--border-hover);
-}
-
-/* Streamlit Header & Text Element Protection (Prevents headings, anchors, and empty tags from becoming gray cards) */
+/* Markdown Protection Rule - Prevents non-card markdown from rendering as cards */
 .stMarkdown > div:has(h1),
 .stMarkdown > div:has(h2),
 .stMarkdown > div:has(h3),
 .stMarkdown > div:has(h4),
 .stMarkdown > div:has(p.small-caps),
+.stMarkdown > div:has(p.eyebrow),
 .stMarkdown > div:has(style),
 .stMarkdown > div:has(div[id^="panel-"]),
 .stMarkdown > div:empty,
@@ -201,400 +211,360 @@ div[data-testid="stMarkdownContainer"] > div:empty {
   transform: none !important;
 }
 
-/* Floating Navigation Capsule */
+/* --------------------------------------------------------------------------
+   4. BUTTONS (PRIMARY, GHOST & ACCENT)
+   -------------------------------------------------------------------------- */
+.stButton > button,
+button[kind="primary"],
+button[kind="secondary"] {
+  background: var(--bg-inverse) !important;
+  color: var(--text-inverse) !important;
+  border-radius: var(--radius-pill) !important;
+  padding: 14px 28px !important;
+  font-size: 15px !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  box-shadow: var(--shadow-glass) !important;
+  transition: transform 0.3s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.2, 1, 0.3, 1) !important;
+  min-height: 40px !important;
+  min-width: 40px !important;
+}
+
+.stButton > button:hover {
+  background: var(--bg-inverse) !important;
+  color: var(--text-inverse) !important;
+  transform: scale(1.02) !important;
+}
+
+.stButton > button:active {
+  transform: scale(0.97) !important;
+}
+
+.stButton > button:focus-visible {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: 2px !important;
+}
+
+.stButton > button:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* Ghost Button */
+.button-ghost {
+  background: transparent !important;
+  border: 1px solid rgba(15, 16, 18, 0.15) !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--text-primary) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. FORM CONTROLS (INPUTS, SELECTS, SLIDERS, TABS)
+   -------------------------------------------------------------------------- */
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input,
+.stSelectbox > div > div {
+  background: var(--bg-surface) !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid transparent !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 300 !important;
+  font-size: 15px !important;
+  padding: var(--space-8) var(--space-16) !important;
+  transition: border-color 0.3s cubic-bezier(0.2, 1, 0.3, 1) !important;
+  min-height: 40px !important;
+}
+
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stNumberInput input:focus,
+.stSelectbox > div > div:focus-within {
+  border-color: var(--accent-primary) !important;
+  outline: none !important;
+}
+
+.stTextInput input:disabled,
+.stTextArea textarea:disabled {
+  background: var(--bg-surface-hover) !important;
+  color: var(--text-secondary) !important;
+  cursor: not-allowed !important;
+}
+
+/* Tabs: Pill Container Style */
+div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+  display: inline-flex !important;
+  background: var(--bg-surface) !important;
+  border-radius: var(--radius-pill) !important;
+  padding: 4px !important;
+  border-bottom: none !important;
+  gap: 4px !important;
+  box-shadow: var(--shadow-glass) !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab"] {
+  border-radius: var(--radius-pill) !important;
+  border: none !important;
+  padding: var(--space-8) var(--space-24) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 400 !important;
+  font-size: 14px !important;
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  transition: all 0.3s cubic-bezier(0.2, 1, 0.3, 1) !important;
+}
+
+div[data-testid="stTabs"] [aria-selected="true"] {
+  background: var(--bg-inverse) !important;
+  color: var(--text-inverse) !important;
+}
+
+/* Sliders */
+.stSlider [data-baseweb="slider"] {
+  background: var(--bg-surface) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. STATUS & PILL SYSTEM (SEMANTIC FOUR STATES)
+   -------------------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  min-height: 24px;
+}
+
+.pill-success {
+  background: rgba(0, 166, 81, 0.12);
+  color: var(--accent-success);
+  border: 1px solid rgba(0, 166, 81, 0.25);
+}
+
+.pill-warning {
+  background: rgba(245, 166, 35, 0.12);
+  color: var(--accent-warning);
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  animation: pulse 2s cubic-bezier(0.2, 1, 0.3, 1) infinite;
+}
+
+.pill-danger {
+  background: rgba(227, 0, 30, 0.12);
+  color: var(--accent-danger);
+  border: 1px solid rgba(227, 0, 30, 0.25);
+  animation: pulse 1.2s cubic-bezier(0.2, 1, 0.3, 1) infinite;
+}
+
+.pill-neutral {
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid rgba(0, 113, 227, 0.25);
+}
+
+/* Alert Notification Strips */
+div[data-testid="stAlert"] {
+  background: rgba(253, 253, 253, 0.95) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--border-dim) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-glass) !important;
+  color: var(--text-primary) !important;
+  padding: var(--space-16) var(--space-24) !important;
+}
+
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentSuccess"]) {
+  border-left: 2px solid var(--accent-success) !important;
+}
+
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentWarning"]) {
+  border-left: 2px solid var(--accent-warning) !important;
+  animation: pulse 2s cubic-bezier(0.2, 1, 0.3, 1) infinite;
+}
+
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentError"]) {
+  border-left: 2px solid var(--accent-danger) !important;
+  box-shadow: 0 0 0 1.5px var(--accent-danger), var(--shadow-glass) !important;
+  animation: pulse 1.2s cubic-bezier(0.2, 1, 0.3, 1) infinite;
+}
+
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
+  border-left: 2px solid var(--accent-primary) !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. FLOATING PILL NAVBAR
+   -------------------------------------------------------------------------- */
 .nav-capsule {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 99999;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 40px;
-  padding: 10px 28px;
-  display: flex;
-  gap: 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  position: fixed !important;
+  top: var(--space-16) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: var(--z-sticky-header) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  background: rgba(253, 253, 253, 0.72) !important;
+  border: 1px solid var(--border-dim) !important;
+  border-radius: var(--radius-pill) !important;
+  padding: var(--space-8) var(--space-24) !important;
+  display: flex !important;
+  gap: var(--space-24) !important;
+  align-items: center !important;
+  box-shadow: var(--shadow-glass) !important;
 }
 
 .nav-capsule a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  transition: opacity var(--duration-200) var(--easing-primary);
+  color: var(--text-primary) !important;
+  text-decoration: none !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 400 !important;
+  font-size: 13px !important;
+  letter-spacing: -0.01em !important;
+  transition: opacity 0.3s cubic-bezier(0.2, 1, 0.3, 1), color 0.3s cubic-bezier(0.2, 1, 0.3, 1) !important;
 }
 
 .nav-capsule a:hover {
-  opacity: 0.7;
+  color: var(--accent-primary) !important;
 }
 
 /* --------------------------------------------------------------------------
-   8. BUTTONS - PREMIUM OUTLINED STYLE
+   8. DATA VISUALIZATION & METRICS
    -------------------------------------------------------------------------- */
-.stButton > button {
-  border: var(--border-width) var(--border-style) var(--accent);
-  border-radius: var(--radius-40);
-  padding: var(--space-12) var(--space-32);
-  color: var(--accent);
-  background: transparent;
-  font-weight: 500;
-  font-size: var(--type-body);
-  font-family: var(--font-display);
-  letter-spacing: var(--letter-spacing-normal);
-  cursor: pointer;
-  transition: 
-    all var(--duration-300) var(--easing-primary),
-    background var(--duration-300) var(--easing-primary),
-    color var(--duration-300) var(--easing-primary);
+[data-testid="stMetricValue"],
+.metric-value,
+code,
+pre,
+.stDataFrame td {
+  font-family: var(--font-mono) !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.02em !important;
 }
 
-/* Button hover state */
-.stButton > button:hover {
-  background: var(--accent);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--accent);
+[data-testid="stMetricLabel"],
+.metric-label {
+  font-family: var(--font-primary) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.10em !important;
+  color: var(--text-secondary) !important;
 }
 
-/* Button active/pressed state */
-.stButton > button:active {
-  background: var(--accent-pressed);
-  border-color: var(--accent-pressed);
-  transform: translateY(0);
+.stDataFrame {
+  border: 1px solid var(--border-dim) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-glass) !important;
+  background: var(--bg-glass-solid) !important;
 }
 
-/* Button focus state (accessibility) */
-.stButton > button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.stDataFrame th {
+  font-family: var(--font-primary) !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.10em !important;
+  color: var(--text-secondary) !important;
 }
 
 /* --------------------------------------------------------------------------
-   9. INPUTS - TEXT, SELECT, NUMBER
+   9. SIDEBAR & FIXED CHROME
    -------------------------------------------------------------------------- */
-.stTextInput > div > input,
-.stSelectbox > div > select,
-.stNumberInput > div > input,
-.stTextArea > div > textarea {
-  border: var(--border-width) var(--border-style) var(--border);
-  border-radius: var(--radius-8);
-  padding: var(--space-12) var(--space-16);
-  font-size: var(--type-body);
-  font-family: var(--font-display);
-  color: var(--text-primary);
-  background: var(--background);
-  transition: 
-    border-color var(--duration-300) var(--easing-primary),
-    box-shadow var(--duration-300) var(--easing-primary);
+section[data-testid="stSidebar"] {
+  background: var(--bg-glass-solid) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+  border-right: 1px solid var(--border-dim) !important;
+  width: 240px !important;
+  box-shadow: var(--shadow-glass) !important;
 }
 
-/* Input focus state */
-.stTextInput > div > input:focus,
-.stSelectbox > div > select:focus,
-.stNumberInput > div > input:focus,
-.stTextArea > div > textarea:focus {
-  border-color: var(--accent);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+section[data-testid="stSidebar"] h1 {
+  font-size: 20px !important;
+  font-weight: 400 !important;
 }
 
-/* Input hover state */
-.stTextInput > div > input:hover,
-.stSelectbox > div > select:hover,
-.stNumberInput > div > input:hover {
-  border-color: var(--border-hover);
+/* Max content width */
+.block-container {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding-top: var(--space-64) !important;
+  padding-bottom: var(--space-80) !important;
 }
 
-/* Placeholder text styling */
-::placeholder {
-  color: var(--text-muted);
+/* --------------------------------------------------------------------------
+   10. MOTION SYSTEM & KEYFRAMES
+   -------------------------------------------------------------------------- */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.4); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 1.2s cubic-bezier(0.2, 1, 0.3, 1),
+              transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+.reveal.visible {
   opacity: 1;
+  transform: none;
+}
+
+/* Skeleton Shimmer Loading */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #F2F2F4 25%, #EBEBED 50%, #F2F2F4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
 }
 
 /* --------------------------------------------------------------------------
-   10. METRICS - CLEAN AND PROFESSIONAL
+   11. ACCESSIBILITY & REDUCED MOTION (MANDATORY)
    -------------------------------------------------------------------------- */
-.stMetric {
-  padding: var(--space-24);
-  border: var(--border-width) var(--border-style) var(--border);
-  border-radius: var(--radius-12);
-  background: var(--surface);
-  transition: 
-    transform var(--duration-300) var(--easing-primary),
-    box-shadow var(--duration-300) var(--easing-primary);
+:focus-visible {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: 2px !important;
 }
 
-.stMetric:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.stMetric label {
-  font-size: var(--type-micro);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-bottom: var(--space-8);
-}
-
-.stMetric div {
-  font-size: var(--type-display-small);
-  font-weight: 300;
-  color: var(--text-primary);
-}
-
-/* --------------------------------------------------------------------------
-   11. EXPANDERS - COLLAPSIBLE SECTIONS
-   -------------------------------------------------------------------------- */
-.streamlit-expanderHeader {
-  font-weight: 500;
-  letter-spacing: var(--letter-spacing-tight);
-  padding: var(--space-16) var(--space-24);
-  border: var(--border-width) var(--border-style) var(--border);
-  border-radius: var(--radius-8);
-  background: var(--surface);
-  transition: 
-    all var(--duration-300) var(--easing-primary),
-    border-color var(--duration-300) var(--easing-primary);
-}
-
-.streamlit-expanderHeader:hover {
-  border-color: var(--accent);
-  background: var(--background);
-}
-
-.streamlit-expanderContent {
-  padding: var(--space-24);
-  border: var(--border-width) var(--border-style) var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--radius-8) var(--radius-8);
-  background: var(--background);
-}
-
-/* --------------------------------------------------------------------------
-   12. CODE BLOCKS - DARK THEME
-   -------------------------------------------------------------------------- */
-pre, .stCode > div {
-  border: var(--border-width) var(--border-style) var(--border);
-  border-radius: var(--radius-8);
-  padding: var(--space-24);
-  background: #0E0F11;
-  color: #F2F2F4;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: var(--line-height-normal);
-  overflow-x: auto;
-}
-
-pre code {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  color: inherit;
-}
-
-/* --------------------------------------------------------------------------
-   13. TABLES - CLEAN AND PROFESSIONAL
-   -------------------------------------------------------------------------- */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: var(--space-24) 0;
-}
-
-th, td {
-  border: var(--border-width) var(--border-style) var(--border);
-  padding: var(--space-16);
-  text-align: left;
-  font-size: var(--type-body);
-  color: var(--text-primary);
-}
-
-th {
-  font-weight: 500;
-  background: var(--surface);
-  font-size: var(--type-micro);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  color: var(--text-secondary);
-}
-
-tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-tr:hover {
-  background: rgba(0, 113, 227, 0.05);
-}
-
-/* --------------------------------------------------------------------------
-   14. BADGES - STATUS INDICATORS
-   -------------------------------------------------------------------------- */
-.badge {
-  display: inline-block;
-  padding: var(--space-4) var(--space-12);
-  border-radius: var(--radius-40);
-  font-size: var(--type-micro);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  line-height: 1;
-}
-
-.badge-critical { 
-  background: #FF5A5F; 
-  color: white; 
-}
-
-.badge-major { 
-  background: #FFB020; 
-  color: black; 
-}
-
-.badge-minor { 
-  background: #2DD36F; 
-  color: black; 
-}
-
-.badge-safe { 
-  background: var(--accent); 
-  color: white; 
-}
-
-.badge-warning { 
-  background: #FFB020; 
-  color: black; 
-}
-
-.badge-blocked { 
-  background: #C5C5C5; 
-  color: black; 
-}
-
-.badge-info { 
-  background: var(--accent); 
-  color: white; 
-}
-
-.badge-success { 
-  background: #2DD36F; 
-  color: black; 
-}
-
-.badge-met {
-  background-color: #ECFDF5;
-  color: #065F46;
-  border: 1px solid #A7F3D0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-}
-
-.badge-gap {
-  background-color: #FEF2F2;
-  color: #991B1B;
-  border: 1px solid #FECACA;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-}
-
-.badge-fallback {
-  background-color: #FFFBEB;
-  color: #92400E;
-  border: 1px solid #FDE68A;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-}
-
-/* --------------------------------------------------------------------------
-   15. LINKS
-   -------------------------------------------------------------------------- */
-a {
-  color: var(--accent);
-  text-decoration: none;
-  transition: color var(--duration-300) var(--easing-primary);
-}
-
-a:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
-
-/* --------------------------------------------------------------------------
-   16. DIVIDER (HORIZONTAL RULE)
-   -------------------------------------------------------------------------- */
-hr {
-  border: none;
-  border-top: var(--border-width) var(--border-style) var(--border);
-  margin: var(--space-64) 0;
-}
-
-/* --------------------------------------------------------------------------
-   17. HOVER EFFECTS UTILITY CLASS
-   -------------------------------------------------------------------------- */
-.hover-lift {
-  transition: transform var(--duration-300) var(--easing-primary);
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px);
-}
-
-/* --------------------------------------------------------------------------
-   18. FOCUS STATES (ACCESSIBILITY)
-   -------------------------------------------------------------------------- */
-*:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-4);
-}
-
-/* Remove default focus outline for mouse users */
-*:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* --------------------------------------------------------------------------
-   19. RESPONSIVE DESIGN - MOBILE
-   -------------------------------------------------------------------------- */
-@media (max-width: 768px) {
-  :root {
-    --type-display-large: 36px;
-    --type-display-medium: 28px;
-    --type-display-small: 20px;
-  }
-  
-  .block-container {
-    padding-top: 3rem;
-    padding-bottom: 2rem;
-  }
-  
-  .stMarkdown > div,
-  .stMetric,
-  .streamlit-expanderHeader {
-    padding: var(--space-20);
-  }
-  
-  .stButton > button {
-    padding: var(--space-10) var(--space-24);
-    font-size: var(--type-body-small);
-  }
-}
-
-/* --------------------------------------------------------------------------
-   20. ACCESSIBILITY - REDUCED MOTION
-   -------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -602,8 +572,32 @@ hr {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   12. RESPONSIVE LAYOUT RULES
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .block-container {
+    padding-left: var(--space-24) !important;
+    padding-right: var(--space-24) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .block-container {
+    padding-left: var(--space-16) !important;
+    padding-right: var(--space-16) !important;
+  }
+  .nav-capsule {
+    display: none !important;
+  }
 }
 
 /* ==========================================================================
-   END OF PREMIUM UI/UX DESIGN SYSTEM
+   END OF MASTER UI/UX DESIGN SYSTEM
    ========================================================================== */

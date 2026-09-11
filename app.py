@@ -27,12 +27,12 @@ if os.path.exists(css_path):
 
 # Floating Navigation Capsule
 st.markdown("""
-<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;background:rgba(255,255,255,0.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(0,0,0,0.08);border-radius:40px;padding:10px 28px;display:flex;gap:24px;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
-  <a href="#panel-a" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">01 Dead-Ends</a>
-  <a href="#panel-b" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">02 Requirements</a>
-  <a href="#panel-c" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">03 Intents</a>
-  <a href="#panel-d" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">04 Contracts</a>
-  <a href="#panel-e" style="color:#0071E3;text-decoration:none;font-weight:500;font-size:13px;letter-spacing:-0.01em;">05 Integrity</a>
+<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(253,253,253,0.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(15,16,18,0.08);border-radius:40px;padding:8px 24px;display:flex;gap:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);">
+  <a href="#panel-a" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">01 Dead-Ends</a>
+  <a href="#panel-b" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">02 Requirements</a>
+  <a href="#panel-c" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">03 Intents</a>
+  <a href="#panel-d" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">04 Contracts</a>
+  <a href="#panel-e" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">05 Integrity</a>
 </div>
 """, unsafe_allow_html=True)
 
