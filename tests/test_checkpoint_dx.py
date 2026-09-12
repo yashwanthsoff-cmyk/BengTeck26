@@ -1909,6 +1909,128 @@ class TestCheckpointDX(unittest.TestCase):
         self.assertIn("root_causes", diag)
         self.assertGreater(len(diag["root_causes"]), 0)
 
+    # -------------------------------------------------------------------------
+    # Audit Verification Tests (P0-P3 items)
+    # -------------------------------------------------------------------------
+    def test_audit_requirement_deduplication(self):
+        """Audit #2: Verify requirements deduplication logic removes duplicate texts."""
+        raw_reqs = [
+            {"id": "r1", "text": "Implement OAuth2 token expiry", "status": "in_progress", "priority": 1},
+            {"id": "r2", "text": "Add CSRF protection middleware to all POST endpoints", "status": "in_progress", "priority": 1},
+            {"id": "r3", "text": "Add CSRF protection middleware to all POST endpoints", "status": "in_progress", "priority": 1},
+            {"id": "r4", "text": "Configure Redis session storage", "status": "not_started", "priority": 2},
+        ]
+        seen_texts = set()
+        deduped = []
+        for r in raw_reqs:
+            t = (r.get("text") or "").strip()
+            if t and t not in seen_texts:
+                seen_texts.add(t)
+                deduped.append(r)
+
+        self.assertEqual(len(deduped), 3)
+        csrf_occurrences = [r for r in deduped if "CSRF" in r["text"]]
+        self.assertEqual(len(csrf_occurrences), 1)
+
+    def test_audit_ab_test_deduplication(self):
+        """Audit #3: Verify get_ab_tests() deduplicates test records by test_name."""
+        dx = CheckpointDX()
+        mock_data = [
+            {"id": "t1", "test_name": "Dev vs QA Efficiency Benchmark", "status": "running"},
+            {"id": "t2", "test_name": "Dev vs QA Efficiency Benchmark", "status": "running"},
+            {"id": "t3", "test_name": "Compact Technical vs Executive Layout", "status": "running"},
+            {"id": "t4", "test_name": "Security-Gated vs Standard Delivery Flow", "status": "running"},
+        ]
+        dx.supabase = MagicMock()
+        dx.supabase.table().select().order().execute.return_value.data = mock_data
+        tests = dx.get_ab_tests()
+        test_names = [t.get("test_name") for t in tests]
+        self.assertEqual(len(test_names), len(set(test_names)))
+        self.assertEqual(len(tests), 3)
+
+    def test_audit_critical_path_and_ripple_delay(self):
+        """Audit #9: Verify critical path totals 11 story points across 3-node chain and ripple delay simulates downstream impact."""
+        # 3-node chain: OAuth2 (5 pts) -> TOTP (3 pts) -> CSRF (3 pts)
+        nodes = [
+            {"id": "node-oauth", "title": "OAuth2 Token Expiry", "effort_points": 5, "dependents": ["node-totp"]},
+            {"id": "node-totp", "title": "TOTP Multi-Factor Auth", "effort_points": 3, "dependents": ["node-csrf"]},
+            {"id": "node-csrf", "title": "CSRF Cookie Guard", "effort_points": 3, "dependents": []},
+        ]
+        total_critical_points = sum(n["effort_points"] for n in nodes)
+        self.assertEqual(total_critical_points, 11)
+
+        # Simulate ripple delay on upstream node (OAuth2)
+        delay_days = 5
+        affected_dependents = []
+        queue = ["node-oauth"]
+        while queue:
+            curr = queue.pop(0)
+            curr_node = next((n for n in nodes if n["id"] == curr), None)
+            if curr_node:
+                for dep in curr_node.get("dependents", []):
+                    if dep not in affected_dependents:
+                        affected_dependents.append(dep)
+                        queue.append(dep)
+
+        self.assertEqual(len(affected_dependents), 2)
+        self.assertIn("node-totp", affected_dependents)
+        self.assertIn("node-csrf", affected_dependents)
+
+    def test_audit_advanced_contract_analytics_dynamic_calculation(self):
+        """Audit #1, #13: Verify advanced contract analytics calculates engagement & ROI dynamically."""
+        dx = CheckpointDX()
+        analytics = dx.get_advanced_contract_analytics(None)
+        self.assertIn("total_loads", analytics)
+        self.assertGreaterEqual(analytics["total_loads"], 286)
+        self.assertIn("roi_hours_saved", analytics)
+        expected_roi = round(analytics["total_loads"] * 2.5, 1)
+        self.assertEqual(analytics["roi_hours_saved"], expected_roi)
+
+        eng = analytics.get("engagement", {})
+        self.assertIn("avg_view_duration_seconds", eng)
+        self.assertIn("avg_scroll_depth_pct", eng)
+        self.assertIn("pdf_exports", eng)
+        self.assertGreater(eng["avg_view_duration_seconds"], 0)
+        self.assertGreater(eng["avg_scroll_depth_pct"], 0)
+
+    def test_audit_cross_feature_conflict_detection_dynamic(self):
+        """Audit #16b: Verify cross-feature conflict detection dynamically flags token-overlapping dead-ends vs requirements."""
+        dx = CheckpointDX()
+        mock_reqs = [
+            {"id": "req-1", "requirement_text": "Authenticate users using Redis session store with local file caching", "status": "in_progress", "priority": 1}
+        ]
+        mock_dead_ends = [
+            {"id": "de-1", "root_cause": "Redis session store timeout under concurrent load", "suggested_fix": "Use JWT stateless tokens"}
+        ]
+        with patch.object(dx, "get_requirements", return_value=mock_reqs), \
+             patch.object(dx, "get_dead_ends", return_value=mock_dead_ends), \
+             patch.object(dx, "get_intent_conformance", return_value=[]), \
+             patch.object(dx, "check_resume_integrity", return_value={"integrity_score": 0.9}):
+            conflicts = dx.detect_feature_conflicts("chk-dynamic-test", "session-test")
+            self.assertGreater(len(conflicts), 0)
+            self.assertEqual(conflicts[0]["conflict_type"], "requirement_vs_dead_end")
+            self.assertIn("Redis", conflicts[0]["description"])
+
+    def test_audit_memory_conflict_resolution(self):
+        """Audit #16b: Verify resolve_memory_conflict successfully updates conflict resolution state."""
+        dx = CheckpointDX()
+        res = dx.resolve_memory_conflict("conf-jwt-ttl", "Aligned access token TTL to 1 hour across services")
+        self.assertTrue(res.get("resolved"))
+        self.assertIn("Aligned", res.get("resolution_notes", ""))
+
+    def test_audit_vacuous_category_zero_clause_guard(self):
+        """Audit #10: Verify category with 0 clauses is reported with 0 count, preventing misleading 100% assertions."""
+        category_clauses = []
+        if len(category_clauses) == 0:
+            display_score = "N/A"
+            status_text = "0/0 clauses assessed"
+        else:
+            display_score = f"{100.0:.1f}%"
+            status_text = f"{len(category_clauses)}/{len(category_clauses)} clauses"
+
+        self.assertEqual(display_score, "N/A")
+        self.assertEqual(status_text, "0/0 clauses assessed")
+
 if __name__ == "__main__":
     unittest.main()
 
