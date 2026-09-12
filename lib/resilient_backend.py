@@ -345,6 +345,44 @@ def init_resilient_store():
         except Exception:
             pass
 
+        # Ensure dead_end_summaries table exists
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS dead_end_summaries (
+            id TEXT PRIMARY KEY,
+            checkpoint_id TEXT,
+            dead_end_type TEXT DEFAULT 'logic_error',
+            root_cause TEXT,
+            suggested_fix TEXT,
+            confidence_score REAL DEFAULT 0.8,
+            severity TEXT DEFAULT 'minor',
+            cluster_key TEXT,
+            fix_effectiveness TEXT DEFAULT 'untested',
+            created_at TEXT
+        );
+        """)
+
+        # Ensure intent_conformance table exists
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS intent_conformance (
+            id TEXT PRIMARY KEY,
+            checkpoint_id TEXT,
+            clause TEXT,
+            implementation_status TEXT DEFAULT 'met',
+            confidence_score REAL DEFAULT 1.0,
+            created_at TEXT
+        );
+        """)
+
+        # Ensure priority and requirement_type exist in requirements
+        try:
+            conn.execute("ALTER TABLE requirements ADD COLUMN priority INTEGER DEFAULT 3")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE requirements ADD COLUMN requirement_type TEXT DEFAULT 'functional'")
+        except Exception:
+            pass
+
 
 init_resilient_store()
 
