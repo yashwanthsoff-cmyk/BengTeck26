@@ -134,14 +134,17 @@ def _assemble_contract_payload(dx: "CheckpointDX", checkpoint_id: str, session_i
         "generated_at": datetime.now().isoformat(),
         "version": 1,
         "integrity_check": integrity,
-        "unresolved_requirements": [
-            {
-                "text": str(r.get("requirement_text", "")),
+        "unresolved_requirements": (lambda: [
+            seen.add(txt) or item
+            for r in unresolved
+            for txt in [str(r.get("requirement_text", "")).strip()]
+            for item in [{
+                "text": txt,
                 "status": str(r.get("status", "not_started")),
                 "priority": int(r["priority"]) if ("priority" in r and isinstance(r["priority"], (int, float))) else 3,
-            }
-            for r in unresolved
-        ],
+            }]
+            if txt and txt not in seen
+        ])() if (seen := set()) is not None else [],
         "do_not_retry": [
             {
                 "reason_abandoned": str(d.get("root_cause", "")) if d.get("root_cause") else None,

@@ -68,12 +68,17 @@ def render_dead_end_type_donut(dead_ends: List[Dict] = None) -> go.Figure:
                 values=values,
                 hole=0.58,
                 marker=dict(colors=color_map[: len(labels)], line=dict(color="#FFFFFF", width=2)),
-                textinfo="label+percent",
+                textinfo="percent",
+                textposition="inside",
                 hoverinfo="label+value+percent",
             )
         ]
     )
-    return _apply_layout_defaults(fig, "Dead-End Type Distribution", height=300)
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5, font=dict(size=11)),
+    )
+    return _apply_layout_defaults(fig, "Dead-End Type Distribution", height=320)
 
 
 def render_root_cause_bar(dead_ends: List[Dict] = None) -> go.Figure:
@@ -116,6 +121,7 @@ def render_severity_distribution_bar(dead_ends: List[Dict] = None) -> go.Figure:
         ]
     )
     fig.update_layout(barmode="stack")
+    fig.update_xaxes(tickangle=0, automargin=True, title_text="Failure Type")
     fig.update_yaxes(title_text="Count", showgrid=True, gridcolor="#E5E7EB")
     return _apply_layout_defaults(fig, "Severity Distribution by Failure Type", height=300)
 
@@ -125,19 +131,23 @@ def render_severity_distribution_bar(dead_ends: List[Dict] = None) -> go.Figure:
 # ==============================================================================
 
 def render_requirement_status_donut(requirements: List[Dict] = None) -> go.Figure:
-    status_counts = {"Done": 1, "In Progress": 1, "Blocked": 1, "Ready": 1, "Superseded": 1}
-    for r in (requirements or []):
-        st = str(r.get("status") or "").lower().strip()
-        if st == "done":
-            status_counts["Done"] += 1
-        elif st in ("in_progress", "inprogress"):
-            status_counts["In Progress"] += 1
-        elif st == "blocked":
-            status_counts["Blocked"] += 1
-        elif st in ("ready", "not_started", "backlog"):
-            status_counts["Ready"] += 1
-        elif st == "superseded":
-            status_counts["Superseded"] += 1
+    if requirements:
+        status_counts = {}
+        for r in requirements:
+            st = str(r.get("status") or "ready").lower().strip()
+            if st == "done":
+                lbl = "Done"
+            elif st in ("in_progress", "inprogress"):
+                lbl = "In Progress"
+            elif st == "blocked":
+                lbl = "Blocked"
+            elif st in ("superseded", "cancelled"):
+                lbl = "Superseded"
+            else:
+                lbl = "Ready"
+            status_counts[lbl] = status_counts.get(lbl, 0) + 1
+    else:
+        status_counts = {"Done": 1, "In Progress": 1, "Blocked": 1, "Ready": 1}
 
     labels = list(status_counts.keys())
     values = list(status_counts.values())
@@ -149,13 +159,18 @@ def render_requirement_status_donut(requirements: List[Dict] = None) -> go.Figur
                 labels=labels,
                 values=values,
                 hole=0.58,
-                marker=dict(colors=color_palette, line=dict(color="#FFFFFF", width=2)),
-                textinfo="label+value",
+                marker=dict(colors=color_palette[: len(labels)], line=dict(color="#FFFFFF", width=2)),
+                textinfo="percent",
+                textposition="inside",
                 hoverinfo="label+value+percent",
             )
         ]
     )
-    return _apply_layout_defaults(fig, "Requirement Status Breakdown", height=300)
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5, font=dict(size=11)),
+    )
+    return _apply_layout_defaults(fig, "Requirement Status Breakdown", height=320)
 
 
 def render_priority_vs_effort_scatter(requirements: List[Dict] = None) -> go.Figure:
@@ -272,12 +287,17 @@ def render_intent_status_donut(intents_data: List[Dict] = None) -> go.Figure:
                 values=values,
                 hole=0.58,
                 marker=dict(colors=color_palette, line=dict(color="#FFFFFF", width=2)),
-                textinfo="label+value",
+                textinfo="percent",
+                textposition="inside",
                 hoverinfo="label+value+percent",
             )
         ]
     )
-    return _apply_layout_defaults(fig, "Clause Conformance Distribution", height=280)
+    fig.update_layout(
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5, font=dict(size=11)),
+    )
+    return _apply_layout_defaults(fig, "Clause Conformance Distribution", height=300)
 
 
 # ==============================================================================
