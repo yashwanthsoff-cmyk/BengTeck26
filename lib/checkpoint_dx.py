@@ -5340,28 +5340,3 @@ The engineering team recommends adopting the following verified remedy:
             return []
         return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text.strip()) if len(s.split()) > 2]
 
-    def get_all_sessions(self) -> List[Dict]:
-        """Retrieves all active session summaries with integrity data for comparison."""
-        sessions = []
-        try:
-            res = self.supabase.table("checkpoints").select("session_id").execute()
-            sids = list(set([r["session_id"] for r in (res.data or []) if r.get("session_id")]))
-            for sid in sids:
-                integ = self.check_resume_integrity(sid)
-                sessions.append({
-                    "session_id": sid,
-                    "integrity_score": integ.get("integrity_score", 0.8),
-                    "memory_keys": integ.get("memory_keys", []),
-                })
-        except Exception:
-            pass
-
-        if not sessions:
-            sessions = [
-                {"session_id": "session-prod-01", "integrity_score": 0.88, "memory_keys": ["k1", "k2", "k3"]},
-                {"session_id": "session-staging-02", "integrity_score": 0.65, "memory_keys": ["k1"]},
-                {"session_id": "session-dev-03", "integrity_score": 0.92, "memory_keys": ["k1", "k2", "k3", "k4"]},
-            ]
-        return sessions
-
-
