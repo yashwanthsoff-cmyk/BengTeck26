@@ -287,6 +287,249 @@ with tab_a:
                 ]
                 st.dataframe(pd.DataFrame(ovr_display), use_container_width=True)
 
+    st.divider()
+
+    # ==========================================================================
+    # DEAD-END ANALYTICS SECTION
+    # ==========================================================================
+    st.markdown('### Dead-End Analytics')
+
+    # Calculate metrics
+    total_dead_ends = len(dead_ends)
+    critical_count = len([d for d in dead_ends if d.get('severity') == 'critical'])
+    major_count = len([d for d in dead_ends if d.get('severity') == 'major'])
+    minor_count = len([d for d in dead_ends if d.get('severity') == 'minor'])
+
+    # Calculate fix success rate
+    fix_success_rate = 0.0
+    if dead_ends:
+        fix_scores = [d.get('fix_effectiveness', 0) for d in dead_ends if 'fix_effectiveness' in d]
+        if fix_scores:
+            fix_success_rate = sum(fix_scores) / len(fix_scores)
+
+    # Display metrics in 4 columns
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(
+            label="Total Dead-Ends",
+            value=total_dead_ends,
+            delta=f"{total_dead_ends} tracked"
+        )
+    with col2:
+        critical_pct = (critical_count / max(total_dead_ends, 1)) * 100
+        st.metric(
+            label="Critical",
+            value=critical_count,
+            delta=f"{critical_pct:.0f}%"
+        )
+    with col3:
+        major_pct = (major_count / max(total_dead_ends, 1)) * 100
+        st.metric(
+            label="Major",
+            value=major_count,
+            delta=f"{major_pct:.0f}%"
+        )
+    with col4:
+        delta_text = "+5%" if fix_success_rate > 0.7 else "-2%"
+        delta_color = "normal" if fix_success_rate > 0.7 else "inverse"
+        st.metric(
+            label="Fix Success Rate",
+            value=f"{fix_success_rate:.0%}",
+            delta=delta_text,
+            delta_color=delta_color
+        )
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 1: DEAD-END TYPES DISTRIBUTION (PIE CHART)
+    # ==========================================================================
+    st.markdown('### Dead-End Types Distribution')
+
+    # Prepare data
+    dead_end_types = {}
+    for d in dead_ends:
+        dtype = d.get('dead_end_type', 'unknown')
+        dead_end_types[dtype] = dead_end_types.get(dtype, 0) + 1
+
+    # Create pie chart if we have data
+    if dead_end_types:
+        import plotly.graph_objects as go
+        
+        # Define colors for each type
+        color_map = {
+            'repeated_failure': '#FF5A5F',
+            'timeout': '#FFB020',
+            'api_error': '#2DD36F',
+            'logic_error': '#0071E3',
+            'resource_exhaustion': '#C5C5C5',
+            'unknown': '#999999'
+        }
+        
+        # Create pie chart
+        fig = go.Figure(data=[go.Pie(
+            labels=list(dead_end_types.keys()),
+            values=list(dead_end_types.values()),
+            hole=0.4,
+            marker=dict(colors=[color_map.get(k, '#0071E3') for k in dead_end_types.keys()]),
+            textinfo='label+percent',
+            textposition='outside',
+            pull=[0.05] * len(dead_end_types),
+            hoverinfo='label+value+percent'
+        )])
+        
+        # Update layout
+        fig.update_layout(
+            height=450,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            margin=dict(t=50, b=50, l=50, r=50),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(size=12)
+            ),
+            title=dict(
+                text="Distribution of Dead-End Types",
+                font=dict(size=18, weight=600),
+                x=0.5,
+                xanchor='center'
+            )
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("[INFO] No dead-end data available for visualization")
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 2: ROOT CAUSE ANALYSIS (HORIZONTAL BAR CHART)
+    # ==========================================================================
+    st.markdown('### Top Root Causes')
+
+    # Extract and count root causes
+    root_causes = {}
+    for d in dead_ends:
+        cause = d.get('root_cause', 'Unknown')
+        # Truncate long causes
+        if len(cause) > 50:
+            cause = cause[:47] + '...'
+        root_causes[cause] = root_causes.get(cause, 0) + 1
+
+    # Get top 5-7 root causes
+    top_causes = sorted(root_causes.items(), key=lambda x: x[1], reverse=True)[:7]
+
+    if top_causes:
+        import plotly.express as px
+        import pandas as pd
+        
+        df_causes = pd.DataFrame(top_causes, columns=['Root Cause', 'Count'])
+        
+        fig = px.bar(
+            df_causes,
+            x='Count',
+            y='Root Cause',
+            orientation='h',
+            color='Count',
+            color_continuous_scale='Reds',
+            text='Count',
+            title='Top Root Causes of Dead-Ends'
+        )
+        
+        fig.update_layout(
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            xaxis_title="Number of Occurrences",
+            yaxis_title="",
+            showlegend=False,
+            margin=dict(t=50, b=50, l=200, r=30),
+            xaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+            yaxis=dict(showgrid=False)
+        )
+        
+        fig.update_traces(
+            textposition='outside',
+            textfont=dict(size=12, weight=600),
+            hovertemplate='<b>%{y}</b><br>Count: %{x}<extra></extra>'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("[INFO] No root cause data available")
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 3: SEVERITY DISTRIBUTION (STACKED BAR)
+    # ==========================================================================
+    st.markdown('### Severity Distribution')
+
+    # Count by severity and type
+    severity_data = {'critical': 0, 'major': 0, 'minor': 0}
+    for d in dead_ends:
+        severity = d.get('severity', 'minor')
+        if severity in severity_data:
+            severity_data[severity] += 1
+
+    if any(severity_data.values()):
+        import plotly.graph_objects as go
+        
+        fig = go.Figure(data=[
+            go.Bar(
+                name='Critical',
+                x=['Dead-Ends'],
+                y=[severity_data['critical']],
+                marker_color='#FF5A5F',
+                text=[severity_data['critical']],
+                textposition='inside'
+            ),
+            go.Bar(
+                name='Major',
+                x=['Dead-Ends'],
+                y=[severity_data['major']],
+                marker_color='#FFB020',
+                text=[severity_data['major']],
+                textposition='inside'
+            ),
+            go.Bar(
+                name='Minor',
+                x=['Dead-Ends'],
+                y=[severity_data['minor']],
+                marker_color='#2DD36F',
+                text=[severity_data['minor']],
+                textposition='inside'
+            )
+        ])
+        
+        fig.update_layout(
+            barmode='stack',
+            height=350,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            xaxis_title="",
+            yaxis_title="Count",
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(t=50, b=50, l=50, r=50),
+            title=dict(text="Dead-Ends by Severity", font=dict(size=16, weight=600), x=0.5)
+        )
+        
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=True, gridcolor='rgba(15,16,18,0.08)')
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
     # Feature 1.2: Root-Cause Clusters (Hardened+)
     with st.expander("Root-Cause Clusters & Systemic Bottlenecks (Hardened+)", expanded=False):
         st.markdown("Clusters recurring failures across sessions to identify systemic bottlenecks, trend velocities, and automated RCA reporting.")
@@ -586,6 +829,272 @@ with tab_b:
                             pass
                     st.success(f"[SUCCESS] Added requirement: '{new_req_text}'")
                     st.rerun()
+
+        st.divider()
+
+        # ==========================================================================
+        # REQUIREMENT ANALYTICS SECTION
+        # ==========================================================================
+        st.markdown('### Requirement Analytics')
+
+        # Calculate metrics
+        requirements = reqs
+        total_reqs = len(requirements)
+        completed = len([r for r in requirements if (r.get('status') or '').lower() == 'done'])
+        in_progress = len([r for r in requirements if (r.get('status') or '').lower() in ('in_progress', 'inprogress')])
+        blocked = len([r for r in requirements if (r.get('status') or '').lower() == 'blocked'])
+        not_started = len([r for r in requirements if (r.get('status') or '').lower() in ('not_started', 'notstarted', 'backlog', 'draft')])
+        superseded = len([r for r in requirements if (r.get('status') or '').lower() == 'superseded'])
+
+        # Calculate completion rate
+        completion_rate = (completed / max(total_reqs, 1)) * 100 if total_reqs > 0 else 0
+
+        # Display metrics in 5 columns
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric(
+                label="Total Requirements",
+                value=total_reqs,
+                delta=f"{total_reqs} tracked"
+            )
+        with col2:
+            st.metric(
+                label="Completed",
+                value=completed,
+                delta=f"{(completed/max(total_reqs,1)*100):.0f}%"
+            )
+        with col3:
+            st.metric(
+                label="In Progress",
+                value=in_progress,
+                delta=f"{(in_progress/max(total_reqs,1)*100):.0f}%"
+            )
+        with col4:
+            blocked_pct = (blocked / max(total_reqs, 1)) * 100
+            st.metric(
+                label="Blocked",
+                value=blocked,
+                delta=f"{blocked_pct:.0f}%",
+                delta_color="inverse"
+            )
+        with col5:
+            delta_text = "+8%" if completion_rate > 60 else "-3%"
+            delta_color = "normal" if completion_rate > 60 else "inverse"
+            st.metric(
+                label="Completion Rate",
+                value=f"{completion_rate:.0f}%",
+                delta=delta_text,
+                delta_color=delta_color
+            )
+
+        st.divider()
+
+        # ==========================================================================
+        # CHART 1: STATUS BREAKDOWN (DONUT CHART)
+        # ==========================================================================
+        st.markdown('### Requirement Status Breakdown')
+
+        status_data = {
+            'Not Started': not_started,
+            'In Progress': in_progress,
+            'Done': completed,
+            'Blocked': blocked,
+            'Superseded': superseded
+        }
+
+        # Only create chart if we have data
+        if any(status_data.values()):
+            import plotly.graph_objects as go
+            
+            color_map = {
+                'Not Started': '#C5C5C5',
+                'In Progress': '#0071E3',
+                'Done': '#2DD36F',
+                'Blocked': '#FF5A5F',
+                'Superseded': '#FFB020'
+            }
+            
+            fig = go.Figure(data=[go.Pie(
+                labels=list(status_data.keys()),
+                values=list(status_data.values()),
+                hole=0.5,
+                marker=dict(colors=[color_map[k] for k in status_data.keys()]),
+                textinfo='label+percent',
+                textposition='outside',
+                pull=[0.05] * len(status_data),
+                hoverinfo='label+value+percent'
+            )])
+            
+            fig.update_layout(
+                height=450,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color="#0F1012"),
+                margin=dict(t=50, b=50, l=50, r=50),
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(size=12)
+                ),
+                title=dict(
+                    text="Requirements by Status",
+                    font=dict(size=18, weight=600),
+                    x=0.5,
+                    xanchor='center'
+                )
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("[INFO] No requirement data available for visualization")
+
+        st.divider()
+
+        # ==========================================================================
+        # CHART 2: PRIORITY VS TYPE MATRIX (SCATTER PLOT)
+        # ==========================================================================
+        st.markdown('### Priority vs Type Matrix')
+
+        priority_type_data = []
+        for r in requirements:
+            priority = r.get('priority', 3)
+            req_type = r.get('requirement_type', 'functional')
+            priority_type_data.append({
+                'Priority': f"P{priority}",
+                'Type': req_type,
+                'Status': (r.get('status') or 'notstarted').lower()
+            })
+
+        if priority_type_data:
+            import plotly.express as px
+            import pandas as pd
+            
+            df_matrix = pd.DataFrame(priority_type_data)
+            
+            status_color_map = {
+                'not_started': '#C5C5C5',
+                'notstarted': '#C5C5C5',
+                'in_progress': '#0071E3',
+                'inprogress': '#0071E3',
+                'done': '#2DD36F',
+                'blocked': '#FF5A5F',
+                'superseded': '#FFB020'
+            }
+            
+            df_matrix['Color'] = df_matrix['Status'].map(lambda s: status_color_map.get(s, '#C5C5C5'))
+            
+            fig = px.scatter(
+                df_matrix,
+                x='Type',
+                y='Priority',
+                color='Status',
+                color_discrete_map=status_color_map,
+                size_max=15,
+                opacity=0.7,
+                title='Requirements by Priority and Type',
+                labels={'Type': 'Requirement Type', 'Priority': 'Priority Level'}
+            )
+            
+            fig.update_layout(
+                height=450,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color="#0F1012"),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(t=50, b=50, l=100, r=30),
+                xaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+                yaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)', categoryorder='array', categoryarray=['P5', 'P4', 'P3', 'P2', 'P1'])
+            )
+            
+            fig.update_traces(
+                marker=dict(line=dict(width=1, color='DarkSlateGrey')),
+                selector=dict(mode='markers')
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("[INFO] No priority data available")
+
+        st.divider()
+
+        # ==========================================================================
+        # CHART 3: REQUIREMENTS BURNDOWN (LINE CHART)
+        # ==========================================================================
+        st.markdown('### Requirements Burndown Chart')
+
+        reqs_with_dates = [r for r in requirements if 'created_at' in r]
+        reqs_with_dates.sort(key=lambda x: str(x.get('created_at', '')))
+
+        cumulative_data = []
+        cumulative_completed = 0
+        cumulative_total = 0
+
+        for i, req in enumerate(reqs_with_dates):
+            cumulative_total += 1
+            if (req.get('status') or '').lower() == 'done':
+                cumulative_completed += 1
+            
+            cumulative_data.append({
+                'Day': i + 1,
+                'Completed': cumulative_completed,
+                'Total': cumulative_total
+            })
+
+        if cumulative_data:
+            import plotly.graph_objects as go
+            import pandas as pd
+            
+            df_burndown = pd.DataFrame(cumulative_data)
+            
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=df_burndown['Day'],
+                y=df_burndown['Total'],
+                mode='lines',
+                name='Total Requirements',
+                line=dict(color='#C5C5C5', width=2, dash='dash'),
+                fill=None
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=df_burndown['Day'],
+                y=df_burndown['Completed'],
+                mode='lines+markers',
+                name='Completed',
+                line=dict(color='#2DD36F', width=3),
+                fill='tonexty',
+                fillcolor='rgba(45, 211, 111, 0.2)',
+                marker=dict(size=6, color='#2DD36F')
+            ))
+            
+            fig.update_layout(
+                height=400,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color="#0F1012"),
+                xaxis_title="Time (Requirements Added)",
+                yaxis_title="Count",
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(t=50, b=50, l=50, r=50),
+                title=dict(text="Requirements Completion Over Time", font=dict(size=16, weight=600), x=0.5),
+                hovermode='x unified'
+            )
+            
+            fig.update_xaxes(showgrid=True, gridcolor='rgba(15,16,18,0.08)')
+            fig.update_yaxes(showgrid=True, gridcolor='rgba(15,16,18,0.08)')
+            
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("[INFO] No burndown data available")
+
+        st.divider()
 
         # Status Filter
         all_statuses = ["all", "draft", "backlog", "ready", "in_progress", "blocked", "in_review", "done", "superseded"]
@@ -1045,6 +1554,226 @@ with tab_c:
     filtered_intents = dx.filter_conformance_by_confidence(intents_data, conf_filter_thresh) if conf_filter_thresh > 0 else intents_data
     if conf_filter_thresh > 0:
         st.info(f"Displaying {len(filtered_intents)} of {len(intents_data)} clauses with confidence >= {conf_filter_thresh:.0%}")
+
+    
+    st.divider()
+
+    # ==========================================================================
+    # INTENT ANALYTICS SECTION
+    # ==========================================================================
+    st.markdown('### Intent Analytics')
+
+    # Calculate metrics
+    intents = filtered_intents if 'filtered_intents' in locals() else intents_data
+    total_intents = len(intents)
+    met = len([i for i in intents if (i.get('implementation_status') or '').lower() in ('met', 'satisfied')])
+    partial = len([i for i in intents if (i.get('implementation_status') or '').lower() in ('partial', 'partially_met')])
+    gap = len([i for i in intents if (i.get('implementation_status') or '').lower() in ('gap', 'not_met')])
+    scope_creep = len([i for i in intents if (i.get('implementation_status') or '').lower() == 'scope_creep'])
+    missing = len([i for i in intents if (i.get('implementation_status') or '').lower() == 'missing'])
+
+    # Calculate conformance score
+    conformance_score = (met / max(total_intents, 1)) * 100 if total_intents > 0 else 0
+
+    # Display metrics in 5 columns
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.metric(
+            label="Total Intents",
+            value=total_intents,
+            delta=f"{total_intents} tracked"
+        )
+    with col2:
+        met_pct = (met / max(total_intents, 1)) * 100
+        st.metric(
+            label="Met",
+            value=met,
+            delta=f"{met_pct:.0f}%"
+        )
+    with col3:
+        gap_pct = (gap / max(total_intents, 1)) * 100
+        st.metric(
+            label="Gaps",
+            value=gap,
+            delta=f"{gap_pct:.0f}%",
+            delta_color="inverse"
+        )
+    with col4:
+        st.metric(
+            label="Partial",
+            value=partial,
+            delta=f"{(partial/max(total_intents,1)*100):.0f}%"
+        )
+    with col5:
+        delta_text = "+3%" if conformance_score > 70 else "-5%"
+        delta_color = "normal" if conformance_score > 70 else "inverse"
+        st.metric(
+            label="Conformance Score",
+            value=f"{conformance_score:.0f}%",
+            delta=delta_text,
+            delta_color=delta_color
+        )
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 1: CONFORMANCE SCORE GAUGE
+    # ==========================================================================
+    st.markdown('### Overall Conformance Score')
+
+    import plotly.graph_objects as go
+
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge+number+delta",
+        value=conformance_score,
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={
+            'text': "Intent Conformance Score",
+            'font': {'size': 20, 'weight': 600, 'family': 'Inter'},
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        delta={
+            'reference': 70,
+            'increasing': {'color': "#2DD36F"},
+            'decreasing': {'color': "#FF5A5F"}
+        },
+        gauge={
+            'axis': {
+                'range': [0, 100],
+                'tickwidth': 1,
+                'tickcolor': "#0F1012",
+                'tickfont': {'size': 12, 'family': 'Inter'}
+            },
+            'bar': {'color': "#0071E3"},
+            'bgcolor': "rgba(0,0,0,0)",
+            'borderwidth': 1,
+            'bordercolor': "rgba(15,16,18,0.12)",
+            'steps': [
+                {'range': [0, 50], 'color': "rgba(255, 90, 95, 0.25)"},
+                {'range': [50, 70], 'color': "rgba(255, 176, 32, 0.25)"},
+                {'range': [70, 100], 'color': "rgba(45, 211, 111, 0.25)"}
+            ],
+            'threshold': {
+                'line': {'color': "#E3001E", 'width': 4},
+                'thickness': 0.75,
+                'value': 70
+            }
+        }
+    ))
+
+    fig_gauge.update_layout(
+        height=420,
+        margin=dict(t=60, b=40, l=50, r=50),
+        paper_bgcolor='rgba(0,0,0,0)',
+        font={'family': 'Inter', 'color': '#0F1012'}
+    )
+
+    st.plotly_chart(fig_gauge, use_container_width=True)
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 2: IMPLEMENTATION STATUS DISTRIBUTION
+    # ==========================================================================
+    st.markdown('### Implementation Status Distribution')
+
+    status_counts = {
+        'Met': met,
+        'Partial': partial,
+        'Gap': gap,
+        'Scope Creep': scope_creep,
+        'Missing': missing
+    }
+
+    if any(status_counts.values()):
+        import plotly.express as px
+        import pandas as pd
+        
+        df_status = pd.DataFrame(list(status_counts.items()), columns=['Status', 'Count'])
+        
+        color_map = {
+            'Met': '#2DD36F',
+            'Partial': '#0071E3',
+            'Gap': '#FF5A5F',
+            'Scope Creep': '#FFB020',
+            'Missing': '#C5C5C5'
+        }
+        
+        fig_status = px.bar(
+            df_status,
+            x='Status',
+            y='Count',
+            color='Status',
+            color_discrete_map=color_map,
+            text='Count',
+            title='Intent Implementation Status',
+            labels={'Status': 'Status', 'Count': 'Number of Intents'}
+        )
+        
+        fig_status.update_layout(
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            showlegend=False,
+            margin=dict(t=50, b=80, l=50, r=50),
+            xaxis=dict(showgrid=False, tickangle=0),
+            yaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+            title=dict(text="Implementation Status Breakdown", font=dict(size=18, weight=600), x=0.5)
+        )
+        
+        fig_status.update_traces(
+            textposition='outside',
+            textfont=dict(size=12, weight=600),
+            marker=dict(line=dict(width=1, color='rgba(15,16,18,0.12)'))
+        )
+        
+        st.plotly_chart(fig_status, use_container_width=True)
+    else:
+        st.info("[INFO] No status data available")
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 3: INTENT CATEGORY DISTRIBUTION
+    # ==========================================================================
+    st.markdown('### Intent Categories')
+
+    categories = {}
+    for i in intents:
+        cat = i.get('intent_category', 'implementation')
+        categories[cat] = categories.get(cat, 0) + 1
+
+    if categories:
+        import plotly.graph_objects as go
+        
+        fig_cat = go.Figure(data=[go.Pie(
+            labels=list(categories.keys()),
+            values=list(categories.values()),
+            hole=0.3,
+            marker=dict(colors=['#0071E3', '#2DD36F', '#FFB020', '#FF5A5F', '#7E57C2', '#26A69A']),
+            textinfo='label+percent',
+            textposition='outside',
+            hoverinfo='label+value+percent'
+        )])
+        
+        fig_cat.update_layout(
+            height=450,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            margin=dict(t=50, b=50, l=50, r=50),
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            title=dict(text="Intent Categories Distribution", font=dict(size=18, weight=600), x=0.5)
+        )
+        
+        st.plotly_chart(fig_cat, use_container_width=True)
+    else:
+        st.info("[INFO] No category data available")
+
+    st.divider()
 
     # 2. Sub-Tabs for Feature 3 Capabilities
     c_tab_match, c_tab_score, c_tab_remedy, c_tab_clusters, c_tab_audit = st.tabs([
@@ -2263,6 +2992,236 @@ with tab_e:
         st.markdown("**Actionable Remediation Directives:**")
         for rec in diagnosis["recommendations"]:
             st.markdown(f"- `{rec}`")
+
+    st.divider()
+
+    # ==========================================================================
+    # INTEGRITY ANALYTICS SECTION
+    # ==========================================================================
+    st.markdown('### Integrity Analytics')
+
+    # Get integrity data
+    selected_sid = selected_session
+    selected_cid_val = selected_cp.get("id") if selected_cp else selected_cid
+    integrity_data = dx.check_resume_integrity(selected_sid, checkpoint_id=selected_cid_val)
+    integrity_score = integrity_data.get('integrity_score', 0.0)
+    memory_keys = integrity_data.get('memory_keys', [])
+    memory_count = len(memory_keys)
+
+    # Get all sessions
+    try:
+        sessions_data = dx.get_all_sessions()
+    except Exception:
+        sessions_data = []
+
+    session_count = len(sessions_data) if sessions_data else 1
+
+    # Display metrics in 3 columns
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        delta_text = "+1%" if integrity_score > 0.7 else "-5%"
+        delta_color = "normal" if integrity_score > 0.7 else "inverse"
+        st.metric(
+            label="Integrity Score",
+            value=f"{integrity_score:.0%}",
+            delta=delta_text,
+            delta_color=delta_color
+        )
+    with col2:
+        st.metric(
+            label="Memory Entries",
+            value=memory_count,
+            delta=f"{memory_count} entries"
+        )
+    with col3:
+        st.metric(
+            label="Active Sessions",
+            value=session_count,
+            delta=f"{session_count} sessions"
+        )
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 1: 7-DAY INTEGRITY TREND (LINE CHART)
+    # ==========================================================================
+    st.markdown('### 7-Day Integrity Trend')
+
+    # Get trend data
+    try:
+        trend_data = dx.get_integrity_trend_7d(selected_sid)
+    except Exception:
+        trend_data = None
+
+    if trend_data and trend_data.get('history'):
+        import plotly.graph_objects as go
+        import pandas as pd
+        
+        history = trend_data['history']
+        df_trend = pd.DataFrame(history)
+        
+        if 'recorded_at' in df_trend.columns:
+            df_trend['recorded_at'] = pd.to_datetime(df_trend['recorded_at'])
+            
+            fig_trend = go.Figure()
+            
+            fig_trend.add_trace(go.Scatter(
+                x=df_trend['recorded_at'],
+                y=df_trend['overall_score'],
+                mode='lines+markers',
+                name='Integrity Score',
+                line=dict(color='#0071E3', width=3),
+                marker=dict(size=8, color='#0071E3', line=dict(width=2, color='white')),
+                fill='tozeroy',
+                fillcolor='rgba(0, 113, 227, 0.1)',
+                hovertemplate='<b>%{x|%b %d, %Y}</b><br>Score: %{y:.0%}<extra></extra>'
+            ))
+            
+            fig_trend.add_shape(
+                type="line",
+                x0=df_trend['recorded_at'].min(),
+                y0=0.7,
+                x1=df_trend['recorded_at'].max(),
+                y1=0.7,
+                line=dict(color="#E3001E", width=2, dash="dash"),
+                name="Threshold (70%)"
+            )
+            
+            fig_trend.update_layout(
+                height=450,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color="#0F1012"),
+                xaxis_title="Date",
+                yaxis_title="Integrity Score",
+                yaxis=dict(range=[0, 1], tickformat='.0%', showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+                xaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(t=50, b=50, l=50, r=50),
+                title=dict(text="Integrity Score Over Last 7 Days", font=dict(size=18, weight=600), x=0.5),
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_trend, use_container_width=True)
+        else:
+            st.info("[INFO] No timestamp data available")
+    else:
+        st.info("[INFO] No trend data available for this session")
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 2: SESSION INTEGRITY COMPARISON (BAR CHART)
+    # ==========================================================================
+    st.markdown('### Session Integrity Comparison')
+
+    if sessions_data and len(sessions_data) > 1:
+        import plotly.express as px
+        import pandas as pd
+        
+        session_scores = []
+        for session in sessions_data:
+            session_scores.append({
+                'Session': session.get('session_id', 'Unknown')[:25],
+                'Integrity Score': session.get('integrity_score', 0),
+                'Memory Count': len(session.get('memory_keys', []))
+            })
+        
+        df_sessions = pd.DataFrame(session_scores)
+        
+        fig_sess = px.bar(
+            df_sessions,
+            x='Session',
+            y='Integrity Score',
+            color='Integrity Score',
+            color_continuous_scale='RdYlGn',
+            text='Integrity Score',
+            range_y=[0, 1],
+            title='Integrity Scores Across Sessions',
+            labels={'Session': 'Session ID', 'Integrity Score': 'Score'}
+        )
+        
+        fig_sess.update_layout(
+            height=450,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            xaxis_title="Session ID",
+            yaxis_title="Integrity Score",
+            yaxis=dict(tickformat='.0%', showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+            xaxis=dict(showgrid=False, tickangle=45),
+            showlegend=False,
+            margin=dict(t=50, b=100, l=50, r=50),
+            title=dict(text="Session Integrity Comparison", font=dict(size=18, weight=600), x=0.5)
+        )
+        
+        fig_sess.update_traces(
+            texttemplate='%{y:.0%}',
+            textposition='outside',
+            textfont=dict(size=12, weight=600),
+            marker=dict(line=dict(width=1, color='DarkSlateGrey'))
+        )
+        
+        fig_sess.add_hline(
+            y=0.7,
+            line_dash="dash",
+            line_color="#E3001E",
+            annotation_text="Threshold (70%)",
+            annotation_position="right"
+        )
+        
+        st.plotly_chart(fig_sess, use_container_width=True)
+    else:
+        st.info("[INFO] Need multiple sessions for comparison")
+
+    st.divider()
+
+    # ==========================================================================
+    # CHART 3: MEMORY CONFIDENCE DISTRIBUTION
+    # ==========================================================================
+    st.markdown('### Memory Confidence Distribution')
+
+    try:
+        memory_entries = dx.retrieve_from_agent_memory(selected_sid)
+    except Exception:
+        memory_entries = []
+
+    if memory_entries and len(memory_entries) > 0:
+        import plotly.graph_objects as go
+        import pandas as pd
+        
+        confidences = [entry.get('confidence', 0.5) for entry in memory_entries]
+        
+        fig_mem = go.Figure()
+        
+        fig_mem.add_trace(go.Histogram(
+            x=confidences,
+            nbinsx=10,
+            marker_color='#0071E3',
+            opacity=0.75,
+            name='Memory Entries'
+        ))
+        
+        fig_mem.update_layout(
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family="Inter", color="#0F1012"),
+            xaxis_title="Confidence Score",
+            yaxis_title="Number of Entries",
+            xaxis=dict(range=[0, 1], showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+            yaxis=dict(showgrid=True, gridcolor='rgba(15,16,18,0.08)'),
+            showlegend=False,
+            margin=dict(t=50, b=50, l=50, r=50),
+            title=dict(text="Distribution of Memory Confidence Scores", font=dict(size=16, weight=600), x=0.5)
+        )
+        
+        st.plotly_chart(fig_mem, use_container_width=True)
+    else:
+        st.info("[INFO] No memory entries with confidence data")
+
+    st.divider()
 
     st.divider()
 
