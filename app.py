@@ -9,6 +9,7 @@ import pandas as pd
 from datetime import datetime
 
 from lib.checkpoint_dx import CheckpointDX, DeadEnd, Intent
+import lib.charts as lc
 from config import PROJECT_NAME, DATABRICKS_CATALOG, DATABRICKS_SCHEMA
 
 st.set_page_config(
@@ -25,14 +26,23 @@ if os.path.exists(css_path):
     with open(css_path, "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# Floating Navigation Capsule
+# Floating Navigation Capsule & Header Chrome Suppression
 st.markdown("""
-<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(253,253,253,0.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(15,16,18,0.08);border-radius:40px;padding:8px 24px;display:flex;gap:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);">
-  <a href="#panel-a" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">01 Dead-Ends</a>
-  <a href="#panel-b" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">02 Requirements</a>
-  <a href="#panel-c" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">03 Intents</a>
-  <a href="#panel-d" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">04 Contracts</a>
-  <a href="#panel-e" style="color:#0F1012;text-decoration:none;font-weight:400;font-size:13px;letter-spacing:-0.01em;">05 Integrity</a>
+<style>
+  #MainMenu { visibility: hidden; }
+  header[data-testid="stHeader"] { visibility: hidden; height: 0 !important; }
+  footer { visibility: hidden; }
+</style>
+<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(253,253,253,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(15,16,18,0.12);border-radius:40px;padding:8px 24px;display:flex;gap:20px;box-shadow:0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);">
+  <a href="#panel-a" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">01 Dead-End Registry</a>
+  <span style="color:#CBD5E1;">·</span>
+  <a href="#panel-b" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">02 Requirement Ledger</a>
+  <span style="color:#CBD5E1;">·</span>
+  <a href="#panel-c" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">03 Intent Conformance</a>
+  <span style="color:#CBD5E1;">·</span>
+  <a href="#panel-d" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">04 Resume Contract</a>
+  <span style="color:#CBD5E1;">·</span>
+  <a href="#panel-e" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">05 Resume Integrity</a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -75,6 +85,7 @@ if checkpoints:
         "Select Checkpoint",
         options=list(checkpoint_options.keys()),
         index=0,
+        format_func=lambda cid: f"{cid[:12]}... ({checkpoint_options[cid].get('branch_name', 'main')})"
     )
     selected_cp = checkpoint_options[selected_cid]
     selected_session = selected_cp.get("session_id") or "session-prod-01"
@@ -145,6 +156,16 @@ with tab_a:
     with col4:
         success_rate = fix_analytics.get('overall_success_rate', 66.7)
         st.metric("Fix Success Rate", f"{success_rate:.1f}%", f"{fix_analytics.get('worked_count', 2)} of {fix_analytics.get('total_tested', 3)} tested")
+
+    # Feature A Visualizations & Distribution Analytics
+    with st.expander("Dead-End Analytics & Visual Distributions", expanded=True):
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            st.plotly_chart(lc.render_dead_end_type_donut(dead_ends), use_container_width=True)
+        with f_col2:
+            st.plotly_chart(lc.render_root_cause_bar(dead_ends), use_container_width=True)
+        with f_col3:
+            st.plotly_chart(lc.render_severity_distribution_bar(dead_ends), use_container_width=True)
 
     # Feature 1.1: Pre-flight Check (Hardened+)
     default_planned = "Authenticate users using Redis session store with local file caching..."
@@ -566,6 +587,16 @@ with tab_b:
 
     st.divider()
 
+    # Feature B Visualizations & Sprint Velocity
+    with st.expander("Requirement Visual Analytics & Sprint Burndown", expanded=True):
+        b_col1, b_col2, b_col3 = st.columns(3)
+        with b_col1:
+            st.plotly_chart(lc.render_requirement_status_donut(reqs), use_container_width=True)
+        with b_col2:
+            st.plotly_chart(lc.render_priority_vs_effort_scatter(reqs), use_container_width=True)
+        with b_col3:
+            st.plotly_chart(lc.render_sprint_burndown_chart(), use_container_width=True)
+
     # Sub-tabs for Feature 2 capabilities
     b_tab_ledger, b_tab_prioritize, b_tab_effort, b_tab_criteria, b_tab_graph = st.tabs([
         "Workflow Ledger",
@@ -928,7 +959,7 @@ with tab_b:
 
         st.info(
             f"[CRITICAL PATH] Longest Execution Duration: `{cp_weight} Story Points`\n\n"
-            f"Path Sequence: `{' ➔ '.join(readable_cp)}`"
+            f"Path Sequence: `{' -> '.join(readable_cp)}`"
         )
 
         # Visual DAG Flow Diagram
@@ -939,12 +970,12 @@ with tab_b:
     <strong>OAuth2 Token Expiry</strong><br>
     <span style="font-size:11px;color:#555">P0 · 3 pts · Done</span>
   </div>
-  <div class="dag-arrow">➔</div>
+  <div class="dag-arrow">&rarr;</div>
   <div class="dag-node">
     <strong>TOTP Multi-Factor Auth</strong><br>
     <span style="font-size:11px;color:#555">P1 · 5 pts · In Progress</span>
   </div>
-  <div class="dag-arrow">➔</div>
+  <div class="dag-arrow">&rarr;</div>
   <div class="dag-node">
     <strong>CSRF Cookie Guard</strong><br>
     <span style="font-size:11px;color:#555">P1 · 3 pts · Blocked</span>
@@ -994,7 +1025,7 @@ with tab_b:
                 st.warning(
                     f"[DELAY SIMULATION] A {sim_delay_days}-day delay on this requirement ripples to "
                     f"**{down_count} downstream requirement(s)** (+{sim_delay_days} days project delivery impact):\n\n"
-                    f"{' ➔ '.join(readable_down)}"
+                    f"{' -> '.join(readable_down)}"
                 )
             else:
                 st.info(f"[DELAY SIMULATION] Selected requirement has no downstream dependents. Delay has 0 ripple impact.")
@@ -1100,11 +1131,21 @@ with tab_c:
     with col_cf1:
         st.caption("AI verification engine analyzing prompt clauses with semantic matching, domain clustering, and predictive trending.")
     with col_cf2:
-        conf_filter_thresh = st.slider("Min Confidence Filter", min_value=0.0, max_value=1.0, value=0.0, step=0.05, key="f3_conf_filter_slider")
+        conf_filter_thresh = st.slider("Min Confidence Filter", min_value=0.0, max_value=1.0, value=0.70, step=0.05, key="f3_conf_filter_slider")
 
     filtered_intents = dx.filter_conformance_by_confidence(intents_data, conf_filter_thresh) if conf_filter_thresh > 0 else intents_data
     if conf_filter_thresh > 0:
         st.info(f"Displaying {len(filtered_intents)} of {len(intents_data)} clauses with confidence >= {conf_filter_thresh:.0%}")
+
+    # Feature C Visualizations & Conformance Breakdown
+    with st.expander("Conformance Gauge & Category Distribution", expanded=True):
+        c_vcol1, c_vcol2, c_vcol3 = st.columns([1, 1, 1])
+        with c_vcol1:
+            st.plotly_chart(lc.render_intent_conformance_gauge(conf_rate), use_container_width=True)
+        with c_vcol2:
+            st.plotly_chart(lc.render_intent_domain_bars(), use_container_width=True)
+        with c_vcol3:
+            st.plotly_chart(lc.render_intent_status_donut(intents_data), use_container_width=True)
 
     # 2. Sub-Tabs for Feature 3 Capabilities
     c_tab_match, c_tab_score, c_tab_remedy, c_tab_clusters, c_tab_audit = st.tabs([
@@ -2169,18 +2210,14 @@ with tab_d:
         c_col2.metric("API Fetch", cb.get("api_fetch", 0))
         c_col3.metric("Autonomous Agent Sessions", cb.get("agent_session", 0))
 
-        st.markdown("#### Drop-off Funnel Analysis")
-        funnel_steps = analytics.get("funnel", {}).get("steps", [])
-        f_cols = st.columns(len(funnel_steps))
-        for idx, f_step in enumerate(funnel_steps):
-            with f_cols[idx]:
-                st.metric(f_step.get("step"), f_step.get("count"), f"{f_step.get('pct')}%")
+        st.markdown("#### Drop-off Funnel & Engagement Visualizations")
+        d_vcol1, d_vcol2 = st.columns(2)
+        with d_vcol1:
+            st.plotly_chart(lc.render_contract_funnel_chart(), use_container_width=True)
+        with d_vcol2:
+            st.plotly_chart(lc.render_contract_engagement_heatmap(), use_container_width=True)
 
-        st.markdown("#### Section Interaction & Engagement Heatmap")
-        eng = analytics.get("engagement", {})
-        heat = eng.get("section_clicks_heatmap", {})
-        h_df = pd.DataFrame([{"Section": k, "Inspect Clicks": v} for k, v in heat.items()])
-        st.dataframe(h_df, use_container_width=True)
+        st.plotly_chart(lc.render_contract_preset_radar(), use_container_width=True)
 
         st.caption(
             f"Average inspection duration: {eng.get('avg_view_duration_seconds', 0)}s | "
@@ -2250,6 +2287,9 @@ with tab_e:
                 for sid, sinfo in multi_int["session_scores"].items()
             ])
             st.dataframe(df_ms, use_container_width=True, hide_index=True)
+
+    # Feature E Multi-Session Comparison Visualization
+    st.plotly_chart(lc.render_multi_session_integrity_bar(), use_container_width=True)
 
     trend_res = dx.get_integrity_trend_7d(selected_session)
     st.markdown(f"**Integrity Trajectory:** `{trend_res['summary']}`")
@@ -2460,6 +2500,8 @@ with tab_e:
                 {"key": "delta_lake_schema", "value": "Catalog checkpoint_dx with strict schema evolution and parquet format", "confidence": 0.88, "created_at": "2026-09-10T11:00:00Z"},
                 {"key": "csrf_cookie_policy", "value": "Double-submit cookie verification enabled with SameSite=Lax", "confidence": 0.82, "created_at": "2026-09-08T16:00:00Z"},
             ]
+
+        st.plotly_chart(lc.render_memory_confidence_histogram(), use_container_width=True)
 
         if memories:
             from datetime import timezone
