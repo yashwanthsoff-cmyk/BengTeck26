@@ -6,7 +6,10 @@ import json
 import hashlib
 import uuid
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 from lib.checkpoint_dx import CheckpointDX, DeadEnd, Intent
 import lib.charts as lc
@@ -386,7 +389,7 @@ with tab_a:
                                 ovr_rec = dx.record_preflight_override(
                                     planned_approach=st.session_state.get("preflight_last_text", planned_text),
                                     similarity_score=score,
-                                    matched_dead_end_id=last_res.get("warnings", [{}])[0].get("id"),
+                                    matched_dead_end_id=(last_res.get("warnings") or [{}])[0].get("id"),
                                     override_reason=ovr_reason,
                                     override_category=ovr_category,
                                     approver=ovr_approver,
@@ -403,7 +406,7 @@ with tab_a:
                 ovr_display = [
                     {
                         "ID": o.get("id"),
-                        "Planned Approach": o.get("planned_approach")[:60] + "..." if len(o.get("planned_approach", "")) > 60 else o.get("planned_approach"),
+                        "Planned Approach": str(o.get("planned_approach") or "")[:60] + ("..." if len(str(o.get("planned_approach") or "")) > 60 else ""),
                         "Similarity": f"{float(o.get('similarity_score', 0)):.1%}",
                         "Risk": o.get("risk_level", "MODERATE"),
                         "Category": o.get("override_category"),
@@ -2000,7 +2003,7 @@ with tab_d:
                     else:
                         st.metric("Draft-7 Schema", "ERRORS", delta="-Invalid")
                 with m3:
-                    raw_score = contract_data.get("integrity_check", {}).get("integrity_score")
+                    raw_score = (contract_data.get("integrity_check") or {}).get("integrity_score")
                     if raw_score is not None:
                         st.metric("Safety Score", f"{float(raw_score):.1%}")
                     else:
@@ -2264,7 +2267,7 @@ with tab_d:
         ab_m1, ab_m2, ab_m3 = st.columns(3)
         ab_tests = dx.get_ab_tests()
         ab_m1.metric("Active A/B Tests", len(ab_tests))
-        total_imp = sum([t.get("results", {}).get("variant_a_impressions", 0) + t.get("results", {}).get("variant_b_impressions", 0) for t in ab_tests]) if ab_tests else 26
+        total_imp = sum([(t.get("results") or {}).get("variant_a_impressions", 0) + (t.get("results") or {}).get("variant_b_impressions", 0) for t in ab_tests]) if ab_tests else 26
         ab_m2.metric("Total Variant Loads", total_imp)
         ab_m3.metric("Leading Winner Confidence", "92.0%")
 
@@ -2285,7 +2288,7 @@ with tab_d:
 
         if ab_tests:
             for t in ab_tests:
-                res = t.get("results", {})
+                res = t.get("results") or {}
                 st.markdown(
                     f"**Test:** `{t.get('test_name')}` | Status: `[{t.get('status', 'running').upper()}]` | "
                     f"Variant A (`{t.get('variant_a_id')}`): {res.get('variant_a_impressions', 0)} views ({res.get('variant_a_conversions', 0)} completed) vs "
@@ -2588,13 +2591,14 @@ with tab_e:
     if active_alerts:
         st.error(f"[ANOMALY DETECTED] {len(active_alerts)} unacknowledged integrity alert(s) requiring attention:")
         for al in active_alerts:
-            aid = al.get("id")
+            aid = str(al.get("id") or "")
+            aid_disp = aid[:8] if aid else "ALERT"
             sev = al.get("severity", "minor").upper()
-            st.markdown(f"- `[{sev}]` **{al.get('alert_type')}**: {al.get('message')} *(detected: {al.get('detected_at', '')[:19]})*")
-            if st.button(f"Acknowledge Alert {aid[:8]}", key=f"ack_{aid}"):
+            st.markdown(f"- `[{sev}]` **{al.get('alert_type')}**: {al.get('message')} *(detected: {str(al.get('detected_at') or '')[:19]})*")
+            if st.button(f"Acknowledge Alert {aid_disp}", key=f"ack_{aid}"):
                 dx.acknowledge_alert(aid)
                 st.session_state["alert_ack_simulated"] = True
-                st.success(f"Alert {aid[:8]} acknowledged and resolved.")
+                st.success(f"Alert {aid_disp} acknowledged and resolved.")
                 st.rerun()
     else:
         st.success("[ALL SYSTEMS NOMINAL] No statistical anomalies detected across historical integrity checkpoints.")
@@ -2604,11 +2608,11 @@ with tab_e:
         with st.expander("View Alert Governance Ledger (Acknowledged & Historic)", expanded=False):
             df_al = pd.DataFrame([
                 {
-                    "Alert ID": a.get("id")[:8],
+                    "Alert ID": str(a.get("id") or "")[:8],
                     "Type": a.get("alert_type"),
                     "Severity": a.get("severity", "").upper(),
                     "Message": a.get("message"),
-                    "Detected At": a.get("detected_at", "")[:19],
+                    "Detected At": str(a.get("detected_at") or "")[:19],
                     "Status": "[RESOLVED]" if a.get("acknowledged") else "[ACTIVE]",
                 }
                 for a in all_alerts
@@ -2702,7 +2706,6 @@ with tab_e:
         st.plotly_chart(lc.render_memory_confidence_histogram(), use_container_width=True)
 
         if memories:
-            from datetime import timezone
             for i, m in enumerate(memories):
                 unique_key = hashlib.md5(f"{m.get('key', '')}_{i}_{m.get('created_at', '')}_{selected_cid}".encode()).hexdigest()[:8]
                 stored_conf = float(m.get("confidence", 0.8))

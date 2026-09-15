@@ -1,4 +1,4 @@
-﻿# lib/entire_adapter.py
+# lib/entire_adapter.py
 """
 Adapter for Entire CLI checkpoint output.
 Provides uniform access to checkpoint attributes across various Entire CLI output formats.

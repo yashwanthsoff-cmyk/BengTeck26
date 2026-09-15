@@ -3,8 +3,11 @@ Syncs checkpoints, requirements, dead-ends (deduped), and intents from Databrick
 Writes memory entries into agent_memory and reconciles superseded requirements across Delta & Supabase.
 Supports execution both within a Spark notebook and standalone via Databricks SQL API.
 """
+import logging
 from typing import TYPE_CHECKING
 from lib.checkpoint_dx import DeadEnd, Intent
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from lib.checkpoint_dx import CheckpointDX

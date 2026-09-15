@@ -1,4 +1,4 @@
-﻿# lib/utils.py
+# lib/utils.py
 """
 Utility functions for text processing, email validation, and cryptographic hashing.
 """
