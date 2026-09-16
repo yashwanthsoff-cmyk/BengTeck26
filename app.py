@@ -272,11 +272,23 @@ with tab_a:
 
     # Feature A Visualizations & Distribution Analytics
     with st.expander("Dead-End Analytics & Visual Distributions", expanded=True):
-        f_pair1, f_pair2 = st.columns([1, 1])
-        with f_pair1:
-            st.plotly_chart(lc.render_dead_end_type_donut(dead_ends), use_container_width=True)
-        with f_pair2:
-            st.markdown(lc.render_dead_end_ranked_list(dead_ends), unsafe_allow_html=True)
+        dead_end_toggle = st.radio(
+            "Dead-End Distribution Presentation Mode",
+            ["Donut + Ranked List", "Radial Gauges", "Horizontal Bars"],
+            horizontal=True,
+            key="dead_end_dist_view_mode",
+        )
+        if dead_end_toggle == "Radial Gauges":
+            st.plotly_chart(lc.render_dead_end_radial_gauges(dead_ends), use_container_width=True)
+        elif dead_end_toggle == "Horizontal Bars":
+            st.plotly_chart(lc.render_dead_end_horizontal_bars(dead_ends), use_container_width=True)
+        else:
+            f_pair1, f_pair2 = st.columns([1, 1])
+            with f_pair1:
+                st.plotly_chart(lc.render_dead_end_type_donut(dead_ends), use_container_width=True)
+            with f_pair2:
+                st.markdown(lc.render_dead_end_ranked_list(dead_ends), unsafe_allow_html=True)
+
 
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1:
@@ -1123,39 +1135,40 @@ with tab_b:
         st.markdown("#### Visual Dependency Flow (Directed Acyclic Graph)")
         st.markdown("""
 <div style="display: flex; align-items: center; justify-content: center; gap: 14px; padding: 18px 24px; background: rgba(248,250,252,0.8); border: 1px solid rgba(15,16,18,0.08); border-radius: 12px; margin: 12px 0 20px 0; overflow-x: auto;">
-  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #00A651; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,166,81,0.08); text-align: left; min-width: 170px;">
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #00A651; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,166,81,0.08); text-align: left; min-width: 170px; max-width: 220px; flex-shrink: 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <span style="font-size: 10px; font-weight: 700; color: #00A651; letter-spacing: 0.05em;">[DONE]</span>
       <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">3 pts</span>
     </div>
-    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">OAuth2 Token Expiry</div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;" title="OAuth2 Token Expiry">OAuth2 Token Expiry</div>
     <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P0 Priority</div>
   </div>
-  <div style="display: flex; flex-direction: column; align-items: center;">
+  <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;">
     <span style="font-size: 18px; font-weight: bold; color: #00A651;">&rarr;</span>
     <span style="font-size: 9px; color: #00A651; font-weight: 600; text-transform: uppercase;">unblocks</span>
   </div>
-  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #0071E3; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,113,227,0.08); text-align: left; min-width: 170px;">
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #0071E3; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,113,227,0.08); text-align: left; min-width: 170px; max-width: 220px; flex-shrink: 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <span style="font-size: 10px; font-weight: 700; color: #0071E3; letter-spacing: 0.05em;">[IN PROGRESS]</span>
       <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">5 pts</span>
     </div>
-    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">TOTP Multi-Factor Auth</div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;" title="TOTP Multi-Factor Auth">TOTP Multi-Factor Auth</div>
     <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P1 Priority</div>
   </div>
-  <div style="display: flex; flex-direction: column; align-items: center;">
+  <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;">
     <span style="font-size: 18px; font-weight: bold; color: #E3001E;">&rarr;</span>
     <span style="font-size: 9px; color: #E3001E; font-weight: 600; text-transform: uppercase;">blocks</span>
   </div>
-  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #E3001E; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(227,0,30,0.08); text-align: left; min-width: 170px;">
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #E3001E; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(227,0,30,0.08); text-align: left; min-width: 170px; max-width: 220px; flex-shrink: 0;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <span style="font-size: 10px; font-weight: 700; color: #E3001E; letter-spacing: 0.05em;">[BLOCKED]</span>
       <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">3 pts</span>
     </div>
-    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">CSRF Cookie Guard</div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;" title="CSRF Cookie Guard">CSRF Cookie Guard</div>
     <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P1 Priority</div>
   </div>
 </div>
+
 """, unsafe_allow_html=True)
 
 
@@ -1329,7 +1342,8 @@ with tab_c:
     with st.expander("Conformance Gauge & Category Distribution", expanded=True):
         c_top1, c_top2 = st.columns([1, 1])
         with c_top1:
-            st.plotly_chart(lc.render_intent_conformance_gauge(category_mean, title="Overall Conformance Index", prev_score=0.80), use_container_width=True)
+            st.plotly_chart(lc.render_intent_conformance_gauge(category_mean, title="Overall Conformance Index", target_score=0.85), use_container_width=True)
+
         with c_top2:
             domain_toggle = st.radio("Domain Presentation Mode", ["Paired Donut + Ranked List", "Radial Gauges", "Horizontal Bars"], horizontal=True, key="intent_domain_view_mode")
             if domain_toggle == "Radial Gauges":
@@ -2504,11 +2518,23 @@ with tab_d:
         c_col2.metric("API Fetch", cb.get("api_fetch", 86))
         c_col3.metric("Autonomous Agent Sessions", cb.get("agent_session", 58))
 
-        ch_pair1, ch_pair2 = st.columns([1, 1])
-        with ch_pair1:
-            st.plotly_chart(lc.render_consumer_channel_donut(cb), use_container_width=True)
-        with ch_pair2:
-            st.markdown(lc.render_consumer_channel_ranked_list(cb), unsafe_allow_html=True)
+        contract_channel_toggle = st.radio(
+            "Channel Presentation Mode",
+            ["Donut + Leaderboard", "Radar / Spider", "Horizontal Bars"],
+            horizontal=True,
+            key="contract_channel_view_mode",
+        )
+        if contract_channel_toggle == "Radar / Spider":
+            st.plotly_chart(lc.render_consumer_channel_radar(cb), use_container_width=True)
+        elif contract_channel_toggle == "Horizontal Bars":
+            st.plotly_chart(lc.render_consumer_channel_horizontal_bars(cb), use_container_width=True)
+        else:
+            ch_pair1, ch_pair2 = st.columns([1, 1])
+            with ch_pair1:
+                st.plotly_chart(lc.render_consumer_channel_donut(cb), use_container_width=True)
+            with ch_pair2:
+                st.markdown(lc.render_consumer_channel_ranked_list(cb), unsafe_allow_html=True)
+
 
 
         st.markdown("#### Drop-off Funnel & Engagement Visualizations")
@@ -2604,12 +2630,24 @@ with tab_e:
             st.dataframe(df_ms, use_container_width=True, hide_index=True)
 
     # Feature E Multi-Session Comparison Visualization
-    ms_pair1, ms_pair2 = st.columns([1, 1])
-    with ms_pair1:
-        st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores"), aggregate_score=multi_int.get("aggregate_score")), use_container_width=True)
-    with ms_pair2:
-        st.markdown(lc.render_multi_session_ranked_list(multi_int.get("session_scores")), unsafe_allow_html=True)
+    ms_toggle = st.radio(
+        "Multi-Session Integrity Presentation Mode",
+        ["Paired Bar + Ranked List", "Radial Gauges", "Horizontal Bars"],
+        horizontal=True,
+        key="ms_integrity_view_mode",
+    )
+    if ms_toggle == "Radial Gauges":
+        st.plotly_chart(lc.render_session_radial_gauges(multi_int.get("session_scores")), use_container_width=True)
+    elif ms_toggle == "Horizontal Bars":
+        st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores"), aggregate_score=multi_int.get("aggregate_score"), horizontal=True), use_container_width=True)
+    else:
+        ms_pair1, ms_pair2 = st.columns([1, 1])
+        with ms_pair1:
+            st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores"), aggregate_score=multi_int.get("aggregate_score")), use_container_width=True)
+        with ms_pair2:
+            st.markdown(lc.render_multi_session_ranked_list(multi_int.get("session_scores")), unsafe_allow_html=True)
     st.caption(f"**Multi-Session Takeaway**: Aggregate baseline sits at {multi_int['aggregate_score']:.1%} with {multi_int['coverage_ratio']:.1%} requirement cross-coverage.")
+
 
 
     trend_res = dx.get_integrity_trend_7d(selected_session)
@@ -2835,15 +2873,26 @@ with tab_e:
                 {"key": "csrf_cookie_policy", "value": "Double-submit cookie verification enabled with SameSite=Lax", "confidence": 0.82, "created_at": "2026-09-08T16:00:00Z"},
             ]
 
-        mem_p1, mem_p2 = st.columns([1, 1])
-        with mem_p1:
-            st.plotly_chart(lc.render_memory_confidence_donut(memories), use_container_width=True)
-        with mem_p2:
-            st.markdown(lc.render_memory_ranked_list(memories), unsafe_allow_html=True)
-
-        st.plotly_chart(lc.render_memory_confidence_battery(), use_container_width=True)
-        st.plotly_chart(lc.render_memory_confidence_histogram(), use_container_width=True)
+        memory_toggle = st.radio(
+            "Memory Presentation Mode",
+            ["Confidence Battery", "Radial Gauges", "Ranked Bars"],
+            horizontal=True,
+            key="memory_view_mode",
+        )
+        if memory_toggle == "Radial Gauges":
+            st.plotly_chart(lc.render_memory_radial_gauges(memories), use_container_width=True)
+        elif memory_toggle == "Ranked Bars":
+            st.plotly_chart(lc.render_memory_horizontal_bars(memories), use_container_width=True)
+        else:
+            mem_p1, mem_p2 = st.columns([1, 1])
+            with mem_p1:
+                st.plotly_chart(lc.render_memory_confidence_donut(memories), use_container_width=True)
+            with mem_p2:
+                st.markdown(lc.render_memory_ranked_list(memories), unsafe_allow_html=True)
+            st.plotly_chart(lc.render_memory_confidence_battery(), use_container_width=True)
+            st.plotly_chart(lc.render_memory_confidence_histogram(), use_container_width=True)
         st.caption("**Memory Resilience Takeaway**: 82% of active memory entries are within fresh high-confidence intervals (>0.80). TTL policy prevents stale drift.")
+
 
         if memories:
             for i, m in enumerate(memories):

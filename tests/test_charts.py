@@ -337,7 +337,122 @@ class TestChartsEngine(unittest.TestCase):
         svg_declining = lc.render_metric_sparkline_svg([20.0, 18.0, 15.0, 12.0, 8.0])
         self.assertIn("#E3001E", svg_declining)
 
+    # ==========================================================================
+    # MASTER PROMPT V3 (FINAL) TESTS: ZERO-OVERLAP & PREMIUM POLISH
+    # ==========================================================================
+
+    def test_conformance_gauge_delta_math_and_callouts(self):
+        """Prompt v3 Part A: Value 70%, Target 85% must show delta -15.0% and explicit Target: 85% callout."""
+        fig = lc.render_intent_conformance_gauge(0.70, target_score=0.85)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(fig.data[0].value, 70.0)
+        # Delta reference must equal target (85.0), so 70.0 - 85.0 = -15.0%
+        self.assertEqual(fig.data[0].delta.reference, 85.0)
+        # Explicit target label on threshold marker
+        ann_texts = [a.text for a in fig.layout.annotations]
+        self.assertTrue(any("Target: 85%" in t for t in ann_texts))
+        self.assertTrue(any("-15.0% vs Target" in t for t in ann_texts))
+
+    def test_fix_success_gauge_reconciled_delta_and_callout(self):
+        """Prompt v3 Part A: Fix success gauge has reconciled delta and explicit Target: 75% callout."""
+        fig = lc.render_fix_success_gauge(0.667, target_rate=75.0)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(fig.data[0].value, 66.7)
+        self.assertEqual(fig.data[0].delta.reference, 75.0)
+        ann_texts = [a.text for a in fig.layout.annotations]
+        self.assertTrue(any("Target: 75%" in t for t in ann_texts))
+        self.assertTrue(any("-8.3% vs Target" in t for t in ann_texts))
+
+    def test_requirement_aging_horizontal_and_stale_threshold(self):
+        """Prompt v3 Part A: Requirement aging must be horizontal bars with explicit 14-day threshold."""
+        fig = lc.render_requirement_aging_heatmap()
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(fig.data[0].orientation, "h")
+        # Explicit 14-day threshold line
+        self.assertTrue(any(s.x0 == 14 and s.x1 == 14 for s in fig.layout.shapes))
+        # Explicit threshold label
+        ann_texts = [a.text for a in fig.layout.annotations]
+        self.assertTrue(any("14-Day Stale Threshold" in t for t in ann_texts))
+
+    def test_resolve_axis_label_overlap_multi_width(self):
+        """Prompt v3 Part A: Multi-width responsive label collision guard."""
+        categories = ["Resource Exhaustion", "Schema Mismatch", "Authentication Loop", "Database Eviction"]
+        # Desktop (1200px)
+        guard_desktop = lc.resolve_axis_label_overlap(categories, container_width=1200)
+        self.assertTrue(guard_desktop["automargin"])
+
+        # Split column (600px)
+        guard_split = lc.resolve_axis_label_overlap(categories, container_width=600)
+        self.assertTrue(guard_split["prefer_horizontal"])
+
+        # Narrow (400px)
+        guard_narrow = lc.resolve_axis_label_overlap(categories, container_width=400)
+        self.assertTrue(guard_narrow["prefer_horizontal"])
+
+    def test_presentation_mode_variants(self):
+        """Prompt v3 Part B: All presentation mode chart variants render valid figures."""
+        # Dead-End variants
+        dead_ends = [{"dead_end_type": "logic_error"}, {"dead_end_type": "timeout"}]
+        fig_de_radial = lc.render_dead_end_radial_gauges(dead_ends)
+        self.assertIsInstance(fig_de_radial, go.Figure)
+        fig_de_bars = lc.render_dead_end_horizontal_bars(dead_ends)
+        self.assertIsInstance(fig_de_bars, go.Figure)
+        self.assertEqual(fig_de_bars.data[0].orientation, "h")
+
+        # Consumer Channel variants
+        cb = {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+        fig_cc_bars = lc.render_consumer_channel_horizontal_bars(cb)
+        self.assertIsInstance(fig_cc_bars, go.Figure)
+        self.assertEqual(fig_cc_bars.data[0].orientation, "h")
+        fig_cc_radar = lc.render_consumer_channel_radar(cb)
+        self.assertIsInstance(fig_cc_radar, go.Figure)
+
+        # Session variants
+        scores = {"s1": {"score": 0.95}, "s2": {"score": 0.85}}
+        fig_sess_radial = lc.render_session_radial_gauges(scores)
+        self.assertIsInstance(fig_sess_radial, go.Figure)
+        fig_sess_h = lc.render_multi_session_integrity_bar(scores, horizontal=True)
+        self.assertIsInstance(fig_sess_h, go.Figure)
+        self.assertEqual(fig_sess_h.data[0].orientation, "h")
+
+        # Memory variants
+        memories = [{"confidence": 0.9}, {"confidence": 0.6}]
+        fig_mem_radial = lc.render_memory_radial_gauges(memories)
+        self.assertIsInstance(fig_mem_radial, go.Figure)
+        fig_mem_bars = lc.render_memory_horizontal_bars(memories)
+        self.assertIsInstance(fig_mem_bars, go.Figure)
+        self.assertEqual(fig_mem_bars.data[0].orientation, "h")
+
+    def test_universal_center_label_pattern(self):
+        """Prompt v3 Part B: Verify bold primary metric and muted uppercase context label in donut centers."""
+        # Dead-end donut
+        de_donut = lc.render_dead_end_type_donut()
+        center_text = de_donut.layout.annotations[0].text
+        self.assertIn("TOTAL DEAD-ENDS", center_text)
+        self.assertIn("<b style=", center_text)
+
+        # Consumer channel donut
+        cc_donut = lc.render_consumer_channel_donut()
+        center_text_cc = cc_donut.layout.annotations[0].text
+        self.assertIn("TOTAL LOADS", center_text_cc)
+
+        # Memory donut
+        mem_donut = lc.render_memory_confidence_donut()
+        center_text_mem = mem_donut.layout.annotations[0].text
+        self.assertIn("AVG CONFIDENCE", center_text_mem)
+
+        # Domain donut
+        dom_donut = lc.render_domain_conformance_donut()
+        center_text_dom = dom_donut.layout.annotations[0].text
+        self.assertIn("AVG CONFORMANCE", center_text_dom)
+
+        # Clause donut
+        clause_donut = lc.render_clause_distribution_donut()
+        center_text_clause = clause_donut.layout.annotations[0].text
+        self.assertIn("CLAUSES AUDITED", center_text_clause)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

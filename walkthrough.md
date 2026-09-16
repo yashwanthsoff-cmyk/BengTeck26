@@ -1057,3 +1057,65 @@ python scratch/check_emojis.py
 - **Commit Message**: `feat(visuals): upgrade all 5 feature graphs with data-storytelling pass`
 - **Trailer**: `Entire-Checkpoint: 01M1TWB9RANKAF8EPSTY7JRYE1`
 - **Remote**: Pushed and synchronized cleanly to `origin/main` on GitHub.
+
+---
+
+## 21. Section 21: Master Prompt v3 (Final) — Premium Visual Polish & Zero-Overlap Guarantee
+
+### 21.1 Part A — Zero-Overlap Guarantee (Structural Foundation)
+
+1. **Shared Collision-Safe Label Utility (`resolve_axis_label_overlap`)**:
+   - Centrally deployed in `lib/charts.py` to calculate label character budgets and bounding density across desktop (`1200px`), tablet (`900px`), split-column (`600px`), and narrow mobile (`400px`).
+   - Automatically applies `automargin=True`, dynamic rotation (`tickangle: -45`), 2-line title wrapping, or triggers a horizontal bar switch when category text exceeds clearance thresholds.
+   - Preserves complete backwards-compatibility via `check_axis_label_collision` alias.
+
+2. **Per-Chart Structural Audit & Collision Fixes**:
+   - **Anomaly Spike Timeline (`render_anomaly_alerts_timeline`)**: Coincident and adjacent alerts grouped into proportional `[N ALERTS]` count badges with dominant severity colors and detailed hover tooltips. Staggered connector stems alternate top/bottom to prevent label collisions.
+   - **Severity Distribution Bar (`render_severity_distribution_bar`)**: Horizontal stacked bar orientation guarantees zero label collision for long category strings like "Resource Exhaustion" and "Schema Mismatch".
+   - **Requirement Aging Monitor (`render_requirement_aging_heatmap`)**: Switched from vertical to horizontal bars (`orientation="h"`). Each requirement label (`REQ-001: OAuth2 Expiry`) receives dedicated vertical row height. Added vertical dashed reference line at 14 days with an explicit callout annotation badge: `14-Day Stale Threshold`.
+   - **Interactive Dependency Flow**: DAG nodes in `app.py` upgraded with `max-width: 220px`, line-clamping to max 2 lines with ellipses, and horizontal scroll safety.
+
+3. **Numeric & Delta Mathematical Reconciliation**:
+   - **Intent Conformance Gauge (`render_intent_conformance_gauge`)**: Reconciled delta calculation against the displayed card target (`85.0%`). When current score is `70.0%`, Plotly indicator delta displays `-15.0%` (resolving the prior `-10.0%` baseline mismatch).
+   - **Fix Success Rate Gauge (`render_fix_success_gauge`)**: Reconciled delta calculation against the displayed target (`75.0%`). Current `66.7%` displays `-8.3% vs Target`.
+   - **Summary Metrics**: All KPI card numbers strictly reconcile to child charts and sibling lists.
+
+4. **Explicit Labels on Every Unlabeled Marker/Tick**:
+   - Callout badge annotation placed directly adjacent to the target notch on the arc of both Conformance (`Target: 85%`) and Fix Success (`Target: 75%`) gauges.
+   - Center sub-labels explicitly declare target benchmark and delta magnitude (e.g. `Target: 85% • Delta: -15.0% vs Target`).
+
+---
+
+### 21.2 Part B — Premium Visual Finishing Pass
+
+1. **Presentation-Mode View Toggles across All Panels**:
+   - **Dead-End Registry (Tab A)**: Interactive segmented toggle between `[Donut + Ranked List | Radial Gauges | Horizontal Bars]`, powered by new `render_dead_end_radial_gauges` and `render_dead_end_horizontal_bars`.
+   - **Intent Conformance (Tab C)**: Seamless toggle between `[Paired Donut + Ranked List | Radial Gauges | Horizontal Bars]`.
+   - **Contract Analytics (Tab D)**: Segmented toggle between `[Donut + Leaderboard | Radar / Spider | Horizontal Bars]`, powered by new `render_consumer_channel_radar` and `render_consumer_channel_horizontal_bars`.
+   - **Cross-Session Integrity & Agent Memory (Tab E)**: Segmented toggles between `[Paired Bar + Ranked List | Radial Gauges | Horizontal Bars]` for sessions, and `[Confidence Battery | Radial Gauges | Ranked Bars]` for memory.
+
+2. **Universal Center-Label Pattern**:
+   - Applied universally across `render_donut_paired_center` and all donut charts:
+     - Bold primary metric placed FIRST (`286`, `70.0%`, `5`, `85.2%`).
+     - Muted uppercase context label directly BENEATH (`TOTAL LOADS`, `CONFORMANCE RATE`, `TOTAL DEAD-ENDS`, `AVG CONFIDENCE`).
+     - Zero empty center holes anywhere in the application.
+
+3. **Category Taxonomy Disambiguation**:
+   - Explicit definitions embedded in `render_clause_ranked_list`:
+     - **Fully Met**: "100% diff match + test evidence"
+     - **Met**: "Verified in diff without unit test"
+     - **Partially Met**: "Partial diff; edge cases remaining"
+     - **Gap**: "Unimplemented clause requirement"
+
+---
+
+### 21.3 Verification Results
+
+| Suite / Verification Check | Result | Details |
+|---|---|---|
+| **Visualization Unit Tests** | **37 / 37 PASS** | `python -m unittest tests/test_charts.py` executed in 3.134s with zero errors. |
+| **Master UI/UX Design System** | **9 / 9 PASS** | `python verify_ui.py` passed. `assets/style.css` size: 27,716 bytes (within 13,000–28,000 bounds). |
+| **5-Feature Production Engine** | **5 / 5 PASS** | `python scripts/verify_all_5_features.py` passed with 100% production-grade verdict. |
+| **Strict Zero-Emoji Mandate** | **0 Emojis [PASS]** | Zero unicode emojis across `lib/charts.py`, `app.py`, and `tests/test_charts.py`. |
+| **Live Streamlit App Server** | **HTTP 200 OK** | Verified responsive and healthy on `http://localhost:8501`. |
+
