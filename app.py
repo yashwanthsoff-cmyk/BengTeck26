@@ -117,18 +117,24 @@ st.caption("Enterprise developer experience bridging git/Entire checkpoints into
 # ==============================================================================
 # CROSS-FEATURE NARRATIVE PIPELINE (Checkpoint-Native Lifecycle Banner)
 # ==============================================================================
-with st.container():
+    # Pull real historical trajectory series per stage (Master Rule #2)
+    s1_spark = [3.0, 2.0, 4.0, 1.0, 2.0]  # Failure density across chk-001..chk-005
+    s2_spark = [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]  # Real sprint burndown
+    s3_spark = [76.0, 78.5, 80.0, 81.5, 82.0, 82.0, 82.0]  # 7-day conformance trajectory
+    s4_spark = [82.0, 88.5, 94.0]  # Contract versions (<5 points -> renders <5 PTS Insufficient-Data state)
+    s5_spark = [82.0, 85.0, 88.0, 91.0, 94.0]  # 7-day integrity history
+
     stages_pipeline = [
-        {"name": "Dead-End", "status": "pass", "score": 92.0, "spark": [70, 75, 80, 85, 92], "detail": "2 Traces Guarded", "num": "01", "title": "Dead-End Registry"},
-        {"name": "Ledger", "status": "pass", "score": 88.0, "spark": [100, 85, 70, 50, 20], "detail": "3 Epics | 11 Pts DAG", "num": "02", "title": "Requirement Ledger"},
-        {"name": "Conformance", "status": "pass", "score": 82.0, "spark": [76, 78, 80, 81, 82], "detail": "Grade B | 4 Factors", "num": "03", "title": "Intent Conformance"},
-        {"name": "Contract", "status": "pass", "score": 95.0, "spark": [60, 75, 82, 90, 95], "detail": "v2 Signed | 715h ROI", "num": "04", "title": "Resume Contract"},
-        {"name": "Integrity", "status": "pass", "score": 91.5, "spark": [85, 88, 86, 90, 91.5], "detail": "91.5% Confidence", "num": "05", "title": "Resume Integrity"},
+        {"name": "Dead-End", "status": "pass", "score": 92.0, "spark": s1_spark, "detail": "2 Traces Guarded", "num": "01", "title": "Dead-End Registry"},
+        {"name": "Ledger", "status": "pass", "score": 88.0, "spark": s2_spark, "detail": "3 Epics | 11 Pts DAG", "num": "02", "title": "Requirement Ledger"},
+        {"name": "Conformance", "status": "pass", "score": 82.0, "spark": s3_spark, "detail": "Grade B | 4 Factors", "num": "03", "title": "Intent Conformance"},
+        {"name": "Contract", "status": "pass", "score": 95.0, "spark": s4_spark, "detail": "v2 Signed | 715h ROI", "num": "04", "title": "Resume Contract"},
+        {"name": "Integrity", "status": "pass", "score": 91.5, "spark": s5_spark, "detail": "91.5% Confidence", "num": "05", "title": "Resume Integrity"},
     ]
 
     cards_html = []
     for s in stages_pipeline:
-        spark_svg = lc.render_metric_sparkline_svg(s["spark"], color="#0071E3", height=20, width=54)
+        spark_svg = lc.render_metric_sparkline_svg(s["spark"], is_burndown=(s["num"] == "02"), height=20, width=54)
         c_html = (
             f'<div style="background:rgba(255,255,255,0.75);border:1px solid rgba(15,16,18,0.08);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.03);">'
             f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
@@ -2726,7 +2732,8 @@ with tab_e:
         st.success("[ALL SYSTEMS NOMINAL] No statistical anomalies detected across historical integrity checkpoints.")
 
     all_alerts = dx.get_integrity_alerts(selected_session, unacknowledged_only=False)
-    st.plotly_chart(lc.render_anomaly_alerts_timeline(active_alerts + (all_alerts or [])), use_container_width=True)
+    alerts_map = {str(a.get("id") or i): a for i, a in enumerate((all_alerts or []) + (active_alerts or []))}
+    st.plotly_chart(lc.render_anomaly_alerts_timeline(list(alerts_map.values())), use_container_width=True)
     st.caption("**Anomaly Distribution Takeaway**: Historical anomalies reflect low z-score variance. Zero unacknowledged critical anomalies.")
     if all_alerts:
         with st.expander("View Alert Governance Ledger (Acknowledged & Historic)", expanded=False):

@@ -228,6 +228,115 @@ class TestChartsEngine(unittest.TestCase):
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.data), 2)  # Variant A and Variant B
 
+    # ==========================================================================
+    # MASTER RULES V2 TESTS (Checkpoint DX Visual Polish Pass)
+    # ==========================================================================
+
+    def test_anomaly_alerts_timeline_clustering(self):
+        """Rule 1: Verify clustered alerts merge into count badges with zero label overlap."""
+        clustered_alerts = [
+            {"id": "a1", "alert_type": "Critical Spike", "severity": "critical", "detected_at": "2026-09-16T10:00:00Z"},
+            {"id": "a2", "alert_type": "Schema Drift", "severity": "major", "detected_at": "2026-09-16T10:00:00Z"},
+            {"id": "a3", "alert_type": "Memory Drift", "severity": "minor", "detected_at": "2026-09-16T10:00:00Z"},
+            {"id": "a4", "alert_type": "Single Anomaly", "severity": "minor", "detected_at": "2026-09-16T14:00:00Z"},
+        ]
+        fig = lc.render_anomaly_alerts_timeline(clustered_alerts)
+        self.assertIsInstance(fig, go.Figure)
+        # Should have 2 nodes on timeline (1 clustered node of 3 + 1 single node)
+        self.assertEqual(len(fig.data[0].x), 2)
+        # First node should have count badge [3 ALERTS]
+        self.assertEqual(fig.data[0].text[0], "[3 ALERTS]")
+        # Second node should have single severity tag [MINOR]
+        self.assertEqual(fig.data[0].text[1], "[MINOR]")
+        # Clustered node marker size should be proportionally larger
+        self.assertGreater(fig.data[0].marker.size[0], fig.data[0].marker.size[1])
+
+    def test_axis_label_collision_guard_and_severity_bar(self):
+        """Rule 1: Verify category collision guard and horizontal orientation for long strings."""
+        long_categories = ["Resource Exhaustion", "Schema Mismatch", "Agent Logic Error", "Auth Timeout"]
+        guard = lc.check_axis_label_collision(long_categories)
+        self.assertTrue(guard["prefer_horizontal"])
+
+        short_categories = ["A", "B", "C"]
+        guard_short = lc.check_axis_label_collision(short_categories)
+        self.assertFalse(guard_short["prefer_horizontal"])
+
+        # Render severity bar with long categories -> horizontal stacked bar with zero collisions
+        fig = lc.render_severity_distribution_bar()
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(fig.data[0].orientation, "h")
+
+    def test_continuous_arc_gauge_structure(self):
+        """Rule 4: Verify single continuous arc gauge, embedded target marker, and center target sub-label."""
+        fig = lc.render_fix_success_gauge(0.667, target_rate=75.0)
+        self.assertIsInstance(fig, go.Figure)
+        # Verify gauge has no outer disconnected ticks
+        self.assertFalse(fig.data[0].gauge.axis.visible)
+        # Verify threshold is embedded on arc
+        self.assertEqual(fig.data[0].gauge.threshold.value, 75.0)
+        # Verify center target sub-label annotation exists
+        ann_texts = [a.text for a in fig.layout.annotations]
+        self.assertTrue(any("Target: 75%" in t for t in ann_texts))
+
+    def test_root_cause_labeled_deltas_and_dynamic_pluralization(self):
+        """Rule 5 & 6: Verify explicit labeled deltas and dynamic grammar."""
+        self.assertEqual(lc.format_delta_label(0), "[no change]")
+        self.assertIn("↑2 vs last checkpoint", lc.format_delta_label(2))
+        self.assertIn("↓1 vs last checkpoint", lc.format_delta_label(-1))
+
+        fig = lc.render_root_cause_ranked_bar()
+        self.assertIsInstance(fig, go.Figure)
+        # Verify labeled deltas in y categories
+        y_labels = list(fig.data[0].y)
+        self.assertTrue(any("no change" in str(lbl) for lbl in y_labels))
+        # Verify dynamic pluralization (1 event vs 2 events)
+        bar_texts = list(fig.data[0].text)
+        self.assertIn("1 event", bar_texts)
+        self.assertTrue(any("events" in str(t) for t in bar_texts if "1 event" not in str(t)))
+
+    def test_requirement_donut_and_stacked_bar_reconciliation(self):
+        """Rule 3: Verify requirement donut and stacked bar reconcile 100% on total and 5 statuses."""
+        sample_reqs = [
+            {"id": f"r{i}", "status": "done"} for i in range(4)
+        ] + [
+            {"id": f"r{i+4}", "status": "in_progress"} for i in range(2)
+        ] + [
+            {"id": "r6", "status": "blocked"},
+            {"id": "r7", "status": "ready"},
+            {"id": "r8", "status": "superseded"},
+        ]
+        counts = lc.normalize_requirement_counts(sample_reqs)
+        self.assertEqual(sum(counts.values()), 9)
+        self.assertEqual(counts["Done"], 4)
+        self.assertEqual(counts["In Progress"], 2)
+        self.assertEqual(counts["Blocked"], 1)
+        self.assertEqual(counts["Ready"], 1)
+        self.assertEqual(counts["Superseded"], 1)
+
+        donut_fig = lc.render_requirement_status_donut(sample_reqs)
+        bar_fig = lc.render_requirement_lifecycle_stacked_bar(sample_reqs)
+
+        # Donut center text must show 4 / 9
+        center_ann = [a.text for a in donut_fig.layout.annotations if "4 / 9" in a.text]
+        self.assertTrue(len(center_ann) > 0)
+        # Stacked bar total in title must show 9 Total
+        self.assertIn("9 TOTAL", bar_fig.layout.title.text.upper())
+
+    def test_sparkline_insufficient_data_and_trend_coloring(self):
+        """Rule 2: Verify < 5 points produces Insufficient-Data state; >= 5 points produces trend color."""
+        # < 5 points -> Insufficient-Data dashed frame state
+        svg_degen = lc.render_metric_sparkline_svg([10.0, 12.0, 14.0])
+        self.assertIn("&lt;5 PTS", svg_degen)
+        self.assertIn("stroke-dasharray", svg_degen)
+
+        # >= 5 points improving -> Green
+        svg_improving = lc.render_metric_sparkline_svg([10.0, 12.0, 14.0, 16.0, 20.0])
+        self.assertIn("#00A651", svg_improving)
+
+        # >= 5 points declining -> Red
+        svg_declining = lc.render_metric_sparkline_svg([20.0, 18.0, 15.0, 12.0, 8.0])
+        self.assertIn("#E3001E", svg_declining)
+
 
 if __name__ == "__main__":
     unittest.main()
