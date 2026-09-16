@@ -12,8 +12,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import importlib
 from lib.checkpoint_dx import CheckpointDX, DeadEnd, Intent
 import lib.charts as lc
+importlib.reload(lc)
 from config import PROJECT_NAME, DATABRICKS_CATALOG, DATABRICKS_SCHEMA
 
 st.set_page_config(

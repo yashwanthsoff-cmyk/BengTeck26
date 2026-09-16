@@ -4,6 +4,8 @@ config.py
 *.env
 scratch/
 *.db
+*.db-journal
+data/
 
 # Python
 __pycache__/
