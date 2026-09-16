@@ -215,14 +215,14 @@ def render_sprint_burndown_chart() -> go.Figure:
 # FEATURE C: INTENT CONFORMANCE VISUALIZATIONS
 # ==============================================================================
 
-def render_intent_conformance_gauge(conformance_score: float = 0.885) -> go.Figure:
+def render_intent_conformance_gauge(conformance_score: float = 0.885, title: str = "Category Domain Conformance") -> go.Figure:
     val_pct = round(conformance_score * 100.0, 1)
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=val_pct,
             number=dict(suffix="%", font=dict(family=FONT_FAMILY, size=32, color=COLORS["dark"])),
-            title=dict(text="<b>Overall Conformance Index</b>", font=dict(family=FONT_FAMILY, size=13, color=COLORS["dark"])),
+            title=dict(text=f"<b>{title}</b>", font=dict(family=FONT_FAMILY, size=13, color=COLORS["dark"])),
             gauge=dict(
                 axis=dict(range=[0, 100], tickwidth=1, tickcolor="#94A3B8"),
                 bar=dict(color=COLORS["primary"], thickness=0.3),
@@ -241,9 +241,13 @@ def render_intent_conformance_gauge(conformance_score: float = 0.885) -> go.Figu
     return _apply_layout_defaults(fig, "", height=250)
 
 
-def render_intent_domain_bars() -> go.Figure:
-    domains = ["Security", "UI/UX", "Functional", "Governance", "Performance"]
-    scores = [92.0, 95.0, 88.0, 78.0, 68.0]
+def render_intent_domain_bars(domain_data: Optional[Dict[str, float]] = None) -> go.Figure:
+    if domain_data:
+        domains = list(domain_data.keys())
+        scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
+    else:
+        domains = ["Security", "UI/UX", "Functional", "Governance", "Performance"]
+        scores = [92.0, 95.0, 88.0, 78.0, 68.0]
     bar_colors = [COLORS["success"] if s >= 85 else (COLORS["warning"] if s >= 75 else COLORS["danger"]) for s in scores]
 
     fig = go.Figure(
@@ -369,16 +373,25 @@ def render_contract_preset_radar() -> go.Figure:
 # FEATURE E: RESUME INTEGRITY & MEMORY VISUALIZATIONS
 # ==============================================================================
 
-def render_multi_session_integrity_bar() -> go.Figure:
-    sessions = ["session-prod-01", "session-prod-02", "session-prev-01"]
-    scores = [95.0, 88.0, 85.0]
+def render_multi_session_integrity_bar(session_scores: Optional[Dict[str, Any]] = None) -> go.Figure:
+    if session_scores and isinstance(session_scores, dict):
+        sessions = list(session_scores.keys())
+        scores = []
+        for sid in sessions:
+            sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+            scores.append(sc * 100.0 if sc <= 1.0 else sc)
+    else:
+        sessions = ["session-prod-01", "session-prod-02", "session-prev-01"]
+        scores = [95.0, 88.0, 85.0]
+
+    colors = [COLORS["success"] if s >= 80 else COLORS["danger"] for s in scores]
 
     fig = go.Figure(
         data=[
             go.Bar(
                 x=sessions,
                 y=scores,
-                marker=dict(color=[COLORS["success"], COLORS["primary"], "#64748B"]),
+                marker=dict(color=colors),
                 text=[f"{s:.1f}%" for s in scores],
                 textposition="auto",
             )
@@ -387,7 +400,7 @@ def render_multi_session_integrity_bar() -> go.Figure:
     fig.add_shape(
         type="line",
         x0=-0.5,
-        x1=2.5,
+        x1=len(sessions) - 0.5,
         y0=80,
         y1=80,
         line=dict(color=COLORS["danger"], width=2, dash="dot"),
@@ -399,7 +412,8 @@ def render_multi_session_integrity_bar() -> go.Figure:
         showarrow=False,
         font=dict(size=11, color=COLORS["danger"]),
     )
-    fig.update_yaxes(title_text="Integrity Score (%)", range=[60, 105], showgrid=True, gridcolor="#E5E7EB")
+    y_min = max(0, int(min(scores) - 15)) if scores else 60
+    fig.update_yaxes(title_text="Integrity Score (%)", range=[y_min, 105], showgrid=True, gridcolor="#E5E7EB")
     return _apply_layout_defaults(fig, "Cross-Session Integrity Comparison", height=300)
 
 

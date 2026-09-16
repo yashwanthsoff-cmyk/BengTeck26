@@ -2031,6 +2031,120 @@ class TestCheckpointDX(unittest.TestCase):
         self.assertEqual(display_score, "N/A")
         self.assertEqual(status_text, "0/0 clauses assessed")
 
+    def test_multi_session_bounds_and_no_artificial_override(self):
+        """Issue 1 & 2: Verify multi-session aggregate is strictly bounded min <= agg <= max and does not override low scores to 0.915."""
+        dx = CheckpointDX()
+        mock_sessions = ["s1", "s2"]
+        def fake_check(sid):
+            if sid == "s1":
+                return {"integrity_score": 0.40, "reason": "Low score"}
+            return {"integrity_score": 0.55, "reason": "Moderate score"}
+
+        with patch.object(dx, "check_resume_integrity", side_effect=fake_check):
+            res = dx.calculate_multi_session_integrity(mock_sessions)
+            scores = [sinfo["score"] for sinfo in res["session_scores"].values()]
+            agg = res["aggregate_score"]
+            self.assertGreaterEqual(agg, min(scores))
+            self.assertLessEqual(agg, max(scores))
+            self.assertNotEqual(res["session_scores"]["s1"]["score"], 0.915)
+            self.assertNotEqual(res["session_scores"]["s2"]["score"], 0.915)
+
+    def test_critical_factor_escalates_to_blocked(self):
+        """Issue 2: Verify diagnose_low_integrity escalates status to [BLOCKED] whenever any factor is [CRITICAL]."""
+        dx = CheckpointDX()
+        with patch.object(dx, "check_resume_integrity", return_value={"integrity_score": 0.35, "stale_memory_count": 0, "conflicts": []}):
+            diag = dx.diagnose_low_integrity("session-test")
+            self.assertEqual(diag["status"], "[BLOCKED]")
+            self.assertLessEqual(diag["overall_integrity"], 0.60)
+
+    def test_contract_and_alert_deduplication(self):
+        """Issue 3: Verify deduplication of flagged_gaps, do_not_retry, and trend_degrading alerts."""
+        from feature_d import _assemble_contract_payload
+        dx = CheckpointDX()
+        mock_dead_ends = [
+            {"root_cause": "Timeout", "suggested_fix": "Retry with backoff"},
+            {"root_cause": "Timeout", "suggested_fix": "Retry with backoff"},
+            {"root_cause": "Memory leak", "suggested_fix": "Free pointers"},
+        ]
+        with patch.object(dx, "check_resume_integrity", return_value={"integrity_score": 0.9}), \
+             patch.object(dx, "get_requirements", return_value=[]), \
+             patch.object(dx, "get_dead_ends", return_value=mock_dead_ends), \
+             patch.object(dx, "_run_sql", return_value=[["Clause A"], ["Clause A"], ["Clause B"]]):
+            payload, _, _ = _assemble_contract_payload(dx, "chk-1", "sess-1")
+            self.assertEqual(len(payload["do_not_retry"]), 2)
+            self.assertEqual(len(payload["flagged_gaps"]), 2)
+
+    def test_forecast_dampening_and_qualifiers(self):
+        """Issue 4: Verify linear forecasts do not flatly clamp to 100% and include qualifiers."""
+        dx = CheckpointDX()
+        with patch.object(dx.supabase, "table") as mock_table:
+            mock_table.return_value.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
+                {"integrity_score": 0.40, "recorded_at": "2026-09-01T00:00:00"},
+                {"integrity_score": 0.90, "recorded_at": "2026-09-02T00:00:00"},
+            ]
+            trend = dx.get_integrity_trend_7d("sess-trend")
+            self.assertLessEqual(trend["forecast_7d"], 0.98)
+            self.assertTrue("(" in trend["summary"] and ")" in trend["summary"])
+
+    def test_consumer_channel_breakdown_arithmetic(self):
+        """Issue 5: Verify proportional consumer channel breakdown sums strictly to total_loads (286)."""
+        dx = CheckpointDX()
+        analytics = dx.get_advanced_contract_analytics(None)
+        cb = analytics["consumer_breakdown"]
+        self.assertEqual(sum(cb.values()), analytics["total_loads"])
+        self.assertEqual(analytics["total_loads"], 286)
+
+    def test_ab_test_winner_consistency(self):
+        """Issue 6: Verify get_ab_tests() reconciles winner with highest conversion rate."""
+        dx = CheckpointDX()
+        mock_data = [
+            {
+                "id": "33333333-3333-3333-3333-333333333333",
+                "test_name": "Security Audit Focus vs Standard",
+                "variant_a_id": "dev",
+                "variant_b_id": "qa",
+                "status": "completed",
+                "results": {
+                    "variant_a_impressions": 24,
+                    "variant_a_conversions": 20,
+                    "variant_b_impressions": 22,
+                    "variant_b_conversions": 19,
+                    "winner": "dev",
+                }
+            },
+            {
+                "id": "44444444-4444-4444-4444-444444444444",
+                "test_name": "Second Benchmark",
+                "variant_a_id": "standard",
+                "variant_b_id": "security_gated",
+                "status": "running",
+                "results": {
+                    "variant_a_impressions": 10,
+                    "variant_a_conversions": 5,
+                    "variant_b_impressions": 10,
+                    "variant_b_conversions": 9,
+                    "winner": "standard",
+                }
+            }
+        ]
+        with patch.object(dx.supabase, "table") as mock_table:
+            mock_table.return_value.select.return_value.order.return_value.execute.return_value.data = mock_data
+            tests = dx.get_ab_tests()
+            matched = [t for t in tests if t["id"] == "33333333-3333-3333-3333-333333333333"]
+            self.assertEqual(len(matched), 1)
+            self.assertEqual(matched[0]["results"]["winner"], "qa")
+
+    def test_sequential_remediation_numbering(self):
+        """Issue 9: Verify diagnose_low_integrity produces sequential [ACTION 1..N] without skips."""
+        dx = CheckpointDX()
+        with patch.object(dx, "check_resume_integrity", return_value={"integrity_score": 0.55, "stale_memory_count": 0, "conflicts": []}):
+            diag = dx.diagnose_low_integrity("sess-test")
+            actions = [r for r in diag["recommendations"] if r.startswith("[ACTION")]
+            self.assertGreater(len(actions), 0)
+            for idx, act in enumerate(actions):
+                self.assertTrue(act.startswith(f"[ACTION {idx+1}]"))
+
+
 if __name__ == "__main__":
     unittest.main()
 

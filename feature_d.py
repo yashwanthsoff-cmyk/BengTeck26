@@ -145,15 +145,27 @@ def _assemble_contract_payload(dx: "CheckpointDX", checkpoint_id: str, session_i
             }]
             if txt and txt not in seen
         ])() if (seen := set()) is not None else [],
-        "do_not_retry": [
-            {
-                "reason_abandoned": str(d.get("root_cause", "")) if d.get("root_cause") else None,
-                "suggested_alternative": str(d.get("suggested_fix", "")) if d.get("suggested_fix") else None,
-                "used_fallback_source": bool(d.get("used_fallback", False)),
-            }
+        "do_not_retry": (lambda: [
+            seen_dnr.add(dnr_key) or item
             for d in dead_ends
-        ],
-        "flagged_gaps": [{"clause": str(g.get("intent_text", ""))} for g in gaps if g.get("intent_text")],
+            for r_ab in [str(d.get("root_cause", "")).strip() if d.get("root_cause") else None]
+            for s_alt in [str(d.get("suggested_fix", "")).strip() if d.get("suggested_fix") else None]
+            for dnr_key in [((r_ab or "").lower(), (s_alt or "").lower())]
+            for item in [{
+                "reason_abandoned": r_ab,
+                "suggested_alternative": s_alt,
+                "used_fallback_source": bool(d.get("used_fallback", False)),
+            }]
+            if dnr_key not in seen_dnr and (r_ab or s_alt)
+        ])() if (seen_dnr := set()) is not None else [],
+        "flagged_gaps": (lambda: [
+            seen_gaps.add(g_key) or item
+            for g in gaps
+            for c_txt in [str(g.get("intent_text", "")).strip()]
+            for g_key in [c_txt.lower()]
+            for item in [{"clause": c_txt}]
+            if c_txt and g_key not in seen_gaps
+        ])() if (seen_gaps := set()) is not None else [],
         "degraded": len(degraded_reasons) > 0,
         "degraded_reasons": degraded_reasons,
         "failure_reason": str(failure_reason) if failure_reason else None,

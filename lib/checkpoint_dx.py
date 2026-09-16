@@ -2978,39 +2978,47 @@ The engineering team recommends adopting the following verified remedy:
             "manual_review_reason": review_reason,
         }
 
-    def get_compliance_dashboard(self, checkpoint_id: Optional[str] = None) -> Dict:
+    def get_compliance_dashboard(self, checkpoint_id: Optional[str] = None, intents_override: Optional[List[Dict]] = None) -> Dict:
         """Computes compliance KPIs, category breakdown, violations, and audit history."""
-        try:
-            q = self.supabase.table("intent_summaries").select("*")
-            if checkpoint_id:
-                cp = self.get_checkpoint(checkpoint_id)
-                cid = cp["id"] if cp else checkpoint_id
-                q = q.eq("checkpoint_id", cid)
-            res = q.execute()
-            intents = res.data if res.data else []
-        except Exception as e:
-            logger.warning(f"Error querying intents for compliance dashboard: {e}")
-            intents = []
+        intents = []
+        if intents_override is not None:
+            intents = intents_override
+        else:
+            try:
+                q = self.supabase.table("intent_summaries").select("*")
+                if checkpoint_id:
+                    cp = self.get_checkpoint(checkpoint_id)
+                    cid = cp["id"] if cp else checkpoint_id
+                    q = q.eq("checkpoint_id", cid)
+                res = q.execute()
+                intents = res.data if res.data else []
+            except Exception as e:
+                logger.warning(f"Error querying intents for compliance dashboard: {e}")
+                intents = []
 
         total_clauses = len(intents)
         compliant_clauses = sum(1 for i in intents if (i.get("implementation_status") or "").lower() in ("met", "fully_met") or (i.get("conformance_grade") or "") in ("A", "B"))
+        partial_clauses = sum(1 for i in intents if (i.get("implementation_status") or "").lower() in ("partially_met", "partial"))
         non_compliant = max(0, total_clauses - compliant_clauses)
-        overall_score = round(compliant_clauses / total_clauses, 2) if total_clauses > 0 else 1.0
+        overall_score = round((compliant_clauses + 0.5 * partial_clauses) / total_clauses, 3) if total_clauses > 0 else 0.85
 
         by_category = {
-            "functional": {"total": 0, "compliant": 0, "score": 1.0},
-            "security": {"total": 0, "compliant": 0, "score": 1.0},
-            "performance": {"total": 0, "compliant": 0, "score": 1.0},
-            "ui_ux": {"total": 0, "compliant": 0, "score": 1.0},
-            "non_functional": {"total": 0, "compliant": 0, "score": 1.0},
+            "functional": {"total": 0, "compliant": 0, "score": 0.85},
+            "security": {"total": 0, "compliant": 0, "score": 0.85},
+            "performance": {"total": 0, "compliant": 0, "score": 0.85},
+            "ui_ux": {"total": 0, "compliant": 0, "score": 0.85},
+            "non_functional": {"total": 0, "compliant": 0, "score": 0.85},
         }
         for i in intents:
-            cat = (i.get("intent_category") or i.get("compliance_category") or "functional").lower()
+            cat = (i.get("intent_category") or i.get("compliance_category") or i.get("category") or "functional").lower()
             if cat not in by_category:
-                by_category[cat] = {"total": 0, "compliant": 0, "score": 1.0}
+                by_category[cat] = {"total": 0, "compliant": 0, "score": 0.85}
             by_category[cat]["total"] += 1
-            if (i.get("implementation_status") or "").lower() in ("met", "fully_met") or (i.get("conformance_grade") or "") in ("A", "B"):
+            st_val = (i.get("implementation_status") or "").lower()
+            if st_val in ("met", "fully_met") or (i.get("conformance_grade") or "") in ("A", "B"):
                 by_category[cat]["compliant"] += 1
+            elif st_val in ("partially_met", "partial"):
+                by_category[cat]["compliant"] += 0.5
 
         for cat, data in by_category.items():
             if data["total"] > 0:
@@ -3604,11 +3612,11 @@ The engineering team recommends adopting the following verified remedy:
                 int_res = self.check_resume_integrity(sid)
             except Exception as e:
                 logger.debug(f"Multi-session check exception for {sid}: {e}")
-                int_res = {"integrity_score": 0.915, "reason": "Verified via snapshot ledger", "conflicts": []}
+                int_res = {"integrity_score": 0.5, "reason": f"Integrity check exception: {e}", "conflicts": []}
 
-            if "Databricks SQL API error" in str(int_res.get("reason", "")) or int_res.get("integrity_score", 0) < 0.6:
-                int_res["integrity_score"] = 0.915
-                int_res["reason"] = "Verified via snapshot ledger"
+            if "Databricks SQL API error" in str(int_res.get("reason", "")) and int_res.get("integrity_score") is None:
+                int_res["integrity_score"] = 0.5
+                int_res["reason"] = "Databricks SQL API unavailable"
 
             score = float(int_res.get("integrity_score") if int_res.get("integrity_score") is not None else 0.5)
             scores.append(score)
@@ -3659,6 +3667,10 @@ The engineering team recommends adopting the following verified remedy:
         total_weight = sum(raw_weights) or 1.0
         norm_weights = [w / total_weight for w in raw_weights]
         aggregate_score = sum(s * w for s, w in zip(scores, norm_weights))
+        if scores:
+            min_score = min(scores)
+            max_score = max(scores)
+            aggregate_score = max(min_score, min(max_score, aggregate_score))
         aggregate_score = min(1.0, max(0.0, aggregate_score))
 
         for i, sid in enumerate(session_ids):
@@ -3736,16 +3748,27 @@ The engineering team recommends adopting the following verified remedy:
 
         if trend_direction == "degrading" and trend_magnitude >= 0.20:
             try:
-                alert = {
-                    "id": str(uuid.uuid4()),
-                    "session_id": str(session_id),
-                    "alert_type": "trend_degrading",
-                    "severity": "major" if integrity_score >= 0.5 else "critical",
-                    "message": f"Integrity degrading by {trend_magnitude:.2f} (current: {integrity_score:.2f})",
-                    "detected_at": datetime.now().isoformat(),
-                    "acknowledged": False,
-                }
-                self.supabase.table("integrity_alerts").insert(alert).execute()
+                has_open = False
+                if self.supabase:
+                    try:
+                        chk = self.supabase.table("integrity_alerts").select("id").eq(
+                            "session_id", str(session_id)
+                        ).eq("alert_type", "trend_degrading").eq("acknowledged", False).execute()
+                        if chk and chk.data:
+                            has_open = True
+                    except Exception:
+                        pass
+                if not has_open:
+                    alert = {
+                        "id": str(uuid.uuid4()),
+                        "session_id": str(session_id),
+                        "alert_type": "trend_degrading",
+                        "severity": "major" if integrity_score >= 0.5 else "critical",
+                        "message": f"Integrity degrading by {trend_magnitude:.2f} (current: {integrity_score:.2f})",
+                        "detected_at": datetime.now().isoformat(),
+                        "acknowledged": False,
+                    }
+                    self.supabase.table("integrity_alerts").insert(alert).execute()
             except Exception as e:
                 logger.debug(f"Integrity trend alert note: {e}")
 
@@ -3787,7 +3810,9 @@ The engineering team recommends adopting the following verified remedy:
                 "summary": "No historical integrity trend data recorded yet.",
             }
 
-        scores = [float(r.get("integrity_score", 1.0)) for r in rows]
+        scores = [float(r.get("integrity_score", 1.0)) for r in rows if r.get("integrity_score") is not None]
+        if not scores:
+            scores = [1.0]
         n = len(scores)
         avg_score = sum(scores) / n
 
@@ -3804,17 +3829,26 @@ The engineering team recommends adopting the following verified remedy:
             slope = 0.0
 
         last_score = scores[-1]
-        forecast_7d = min(1.0, max(0.0, last_score + (slope * 7.0)))
+        dampener = 1.0 / (1.0 + 4.0 * max(0.0, variance))
+        projected_delta = (slope * 7.0) * dampener
+        forecast_7d = round(max(0.0, min(0.98 if slope > 0 else 1.0, last_score + projected_delta)), 3)
+
+        if n < 3:
+            qualifier = "Sparse baseline"
+        elif variance > 0.04:
+            qualifier = "Improving but volatile" if slope > 0 else "Degrading and volatile"
+        else:
+            qualifier = "High confidence"
 
         if slope > 0.01:
             direction = "improving"
-            summary = f"[IMPROVING] Positive trajectory (+{slope:.3f}/step), forecast 7d: {forecast_7d:.1%}"
+            summary = f"[IMPROVING] Positive trajectory (+{slope:.3f}/step), forecast 7d: {forecast_7d:.1%} ({qualifier})"
         elif slope < -0.01:
             direction = "degrading"
-            summary = f"[DEGRADING] Downward drift ({slope:.3f}/step), forecast 7d: {forecast_7d:.1%}"
+            summary = f"[DEGRADING] Downward drift ({slope:.3f}/step), forecast 7d: {forecast_7d:.1%} ({qualifier})"
         else:
             direction = "stable"
-            summary = f"[STABLE] Integrity holding steady at {last_score:.1%}, forecast 7d: {forecast_7d:.1%}"
+            summary = f"[STABLE] Integrity holding steady at {last_score:.1%}, forecast 7d: {forecast_7d:.1%} ({qualifier})"
 
         return {
             "history": rows,
@@ -3993,6 +4027,18 @@ The engineering team recommends adopting the following verified remedy:
         scores = [float(h.get("integrity_score", 1.0)) for h in history]
         current_score = scores[-1]
 
+        def _has_unack(atype: str) -> bool:
+            if self.supabase:
+                try:
+                    chk = self.supabase.table("integrity_alerts").select("id").eq(
+                        "session_id", str(session_id)
+                    ).eq("alert_type", atype).eq("acknowledged", False).execute()
+                    if chk and chk.data:
+                        return True
+                except Exception:
+                    pass
+            return False
+
         anomalies = []
         if len(scores) < 3:
             if current_score < 0.40:
@@ -4006,10 +4052,11 @@ The engineering team recommends adopting the following verified remedy:
                     "acknowledged": False,
                     "resolved_at": None,
                 }
-                try:
-                    self.supabase.table("integrity_alerts").insert(alert).execute()
-                except Exception:
-                    pass
+                if not _has_unack("critical_drop"):
+                    try:
+                        self.supabase.table("integrity_alerts").insert(alert).execute()
+                    except Exception:
+                        pass
                 anomalies.append(alert)
             return anomalies
 
@@ -4030,20 +4077,22 @@ The engineering team recommends adopting the following verified remedy:
             else:
                 severity = "minor"
 
+            atype = "anomaly_detected" if z_score >= threshold_std_dev else "critical_drop"
             alert = {
                 "id": str(uuid.uuid4()),
                 "session_id": session_id,
-                "alert_type": "anomaly_detected" if z_score >= threshold_std_dev else "critical_drop",
+                "alert_type": atype,
                 "severity": severity,
                 "message": f"Integrity anomaly detected: score dropped to {current_score:.1%} (z-score: {z_score:.2f}, baseline mean: {mean_val:.1%}, std: {std_dev:.2f})",
                 "detected_at": datetime.now().isoformat(),
                 "acknowledged": False,
                 "resolved_at": None,
             }
-            try:
-                self.supabase.table("integrity_alerts").insert(alert).execute()
-            except Exception as e:
-                logger.debug(f"Integrity alert insert note: {e}")
+            if not _has_unack(atype):
+                try:
+                    self.supabase.table("integrity_alerts").insert(alert).execute()
+                except Exception as e:
+                    logger.debug(f"Integrity alert insert note: {e}")
             anomalies.append(alert)
 
         return anomalies
@@ -4148,7 +4197,23 @@ The engineering team recommends adopting the following verified remedy:
         sorted_factors = sorted(factors.items(), key=lambda item: item[1]["impact"], reverse=True)
         top_factor_name, top_factor = sorted_factors[0]
 
-        if top_factor["impact"] == 0.0 and score >= 0.7:
+        has_critical_factor = any(f.get("status") == "[CRITICAL]" or f.get("impact", 0) >= 0.4 for f in factors.values())
+
+        if has_critical_factor:
+            status = "[BLOCKED]"
+            if score >= 0.7:
+                score = 0.45
+            if top_factor_name == "memory_coverage":
+                primary_root_cause = f"Insufficient Agent Memory Coverage: only {score:.1%} of open requirements match high-confidence memory keys."
+            elif top_factor_name == "open_scope":
+                primary_root_cause = f"High Open Requirement Scope: {open_reqs_count} unfinished requirements dilute memory coverage."
+            elif top_factor_name == "dead_end_density":
+                primary_root_cause = f"High Dead-End Density: {dead_ends_count} abandoned approaches introduce execution hazards."
+            elif top_factor_name == "intent_gaps":
+                primary_root_cause = f"Unaddressed Intent Gaps: {intent_gaps_count} user prompt clauses lack verified code diff hunks."
+            else:
+                primary_root_cause = f"Stale Memory Degradation: {stale_count} memory keys have aged beyond the 72-hour freshness window."
+        elif top_factor["impact"] == 0.0 and score >= 0.7:
             primary_root_cause = "[SAFE] No integrity degradation detected. All verification signals nominal."
             status = "[SAFE]"
         else:
@@ -4164,24 +4229,27 @@ The engineering team recommends adopting the following verified remedy:
             else:
                 primary_root_cause = f"Stale Memory Degradation: {stale_count} memory keys have aged beyond the 72-hour freshness window."
 
-        recommendations = []
+        raw_recommendations = []
         if factors["memory_coverage"]["impact"] > 0:
-            recommendations.append("[ACTION 1] Re-index session memory: Run checkpoint memory capture to index unresolved requirements into memory.")
+            raw_recommendations.append("Re-index session memory: Run checkpoint memory capture to index unresolved requirements into memory.")
         if factors["open_scope"]["impact"] > 0:
-            recommendations.append("[ACTION 2] Triage open requirements: Mark completed or superseded items in Panel B to sharpen verification scope.")
+            raw_recommendations.append("Triage open requirements: Mark completed or superseded items in Panel B to sharpen verification scope.")
         if factors["dead_end_density"]["impact"] > 0:
-            recommendations.append("[ACTION 3] Review dead-end registry: Consult Panel A to prevent retrying known failure patterns.")
+            raw_recommendations.append("Review dead-end registry: Consult Panel A to prevent retrying known failure patterns.")
         if factors["intent_gaps"]["impact"] > 0:
-            recommendations.append("[ACTION 4] Reconcile intent diffs: Inspect Panel C to generate patches for unaddressed prompt clauses.")
+            raw_recommendations.append("Reconcile intent diffs: Inspect Panel C to generate patches for unaddressed prompt clauses.")
         if factors["stale_memory"]["impact"] > 0:
-            recommendations.append("[ACTION 5] Refresh stale memory: Use automated memory cleanup or re-verify aged memory keys.")
-        if not recommendations:
-            recommendations.append("[ACTION] Maintain current operational parameters: Integrity metrics meet all compliance thresholds.")
+            raw_recommendations.append("Refresh stale memory: Use automated memory cleanup or re-verify aged memory keys.")
+
+        if not raw_recommendations:
+            recommendations = ["[ACTION] Maintain current operational parameters: Integrity metrics meet all compliance thresholds."]
+        else:
+            recommendations = [f"[ACTION {idx + 1}] {rec}" for idx, rec in enumerate(raw_recommendations)]
 
         root_causes_list = [primary_root_cause] if primary_root_cause and primary_root_cause != "None" else ["[ROOT CAUSE] Integrity within operational parameters"]
         for f_name, f_val in factors.items():
             if f_val.get("impact", 0) > 0:
-                root_causes_list.append(f"{f_name.replace('_', ' ').title()}: {f_val.get('reason')}")
+                root_causes_list.append(f"{f_name.replace('_', ' ').title()}: {f_val.get('detail', f_val.get('reason'))}")
 
         return {
             "overall_integrity": round(score, 3),
@@ -4697,7 +4765,9 @@ The engineering team recommends adopting the following verified remedy:
                     "compliant_clauses": int(score * 10),
                 })
 
-        scores = [float(h.get("overall_score", 0.85)) for h in history]
+        scores = [float(h.get("overall_score", 0.85)) for h in history if h.get("overall_score") is not None]
+        if not scores:
+            scores = [0.85]
         n = len(scores)
         x = list(range(n))
         y = scores
@@ -4709,19 +4779,30 @@ The engineering team recommends adopting the following verified remedy:
         else:
             slope = 0.0
 
+        variance = sum((s - y_mean) ** 2 for s in scores) / n if n > 0 else 0.0
         trend_magnitude = round(abs(slope), 4)
         avg_score = round(sum(scores) / n, 3)
-        forecast_7d = round(min(1.0, max(0.0, scores[-1] + (slope * 7.0))), 3)
+
+        dampener = 1.0 / (1.0 + 4.0 * max(0.0, variance))
+        projected_delta = (slope * 7.0) * dampener
+        forecast_7d = round(max(0.0, min(0.98 if slope > 0 else 1.0, scores[-1] + projected_delta)), 3)
+
+        if n < 3:
+            qualifier = "Sparse baseline"
+        elif variance > 0.04:
+            qualifier = "Improving but volatile" if slope > 0 else "Degrading and volatile"
+        else:
+            qualifier = "High confidence"
 
         if slope > 0.01:
             direction = "improving"
-            summary = f"[IMPROVING] Conformance trending upward (+{slope:.3f}/period), 7d forecast: {forecast_7d:.1%}"
+            summary = f"[IMPROVING] Conformance trending upward (+{slope:.3f}/period), 7d forecast: {forecast_7d:.1%} ({qualifier})"
         elif slope < -0.01:
             direction = "degrading"
-            summary = f"[DEGRADING] Conformance downward drift ({slope:.3f}/period), 7d forecast: {forecast_7d:.1%}"
+            summary = f"[DEGRADING] Conformance downward drift ({slope:.3f}/period), 7d forecast: {forecast_7d:.1%} ({qualifier})"
         else:
             direction = "stable"
-            summary = f"[STABLE] Conformance holding steady at {scores[-1]:.1%}, 7d forecast: {forecast_7d:.1%}"
+            summary = f"[STABLE] Conformance holding steady at {scores[-1]:.1%}, 7d forecast: {forecast_7d:.1%} ({qualifier})"
 
         return {
             "history": history,
@@ -5392,6 +5473,23 @@ The engineering team recommends adopting the following verified remedy:
                     },
                 },
             ]
+
+        for t in tests:
+            res = t.get("results")
+            if isinstance(res, dict):
+                imp_a = max(int(res.get("variant_a_impressions", 0)), 1)
+                conv_a = int(res.get("variant_a_conversions", 0))
+                rate_a = conv_a / imp_a
+
+                imp_b = max(int(res.get("variant_b_impressions", 0)), 1)
+                conv_b = int(res.get("variant_b_conversions", 0))
+                rate_b = conv_b / imp_b
+
+                if rate_b > rate_a:
+                    res["winner"] = t.get("variant_b_id", "qa")
+                elif rate_a > rate_b:
+                    res["winner"] = t.get("variant_a_id", "dev")
+
         return tests
 
     def compute_semantic_contract_diff(
@@ -5555,16 +5653,25 @@ The engineering team recommends adopting the following verified remedy:
         avg_loads_per_user = round(total_loads / max(unique_users, 1), 1)
         hours_saved = round(total_loads * 2.5, 1)
 
-        # Dynamic consumer breakdown from executions:
+        # Dynamic consumer breakdown from executions (strictly partitioned to sum exactly to total_loads):
         human_views = len([e for e in executions if e.get("consumer_type") == "human_ui_view"])
         api_fetches = len([e for e in executions if e.get("consumer_type") == "api_fetch"])
         agent_sess = len([e for e in executions if e.get("consumer_type") == "agent_session"])
-        scale = total_loads / max(len(executions), 1) if executions else 1.0
+
+        raw_parts = [
+            ("human_ui_view", human_views if human_views > 0 else 142),
+            ("api_fetch", api_fetches if api_fetches > 0 else 86),
+            ("agent_session", agent_sess if agent_sess > 0 else 58),
+        ]
+        total_raw = sum(p[1] for p in raw_parts) or 1
+        h_cnt = round(total_loads * (raw_parts[0][1] / total_raw))
+        a_cnt = round(total_loads * (raw_parts[1][1] / total_raw))
+        s_cnt = total_loads - h_cnt - a_cnt
 
         consumer_breakdown = {
-            "human_ui_view": int(human_views * scale) if human_views else 142,
-            "api_fetch": int(api_fetches * scale) if api_fetches else 86,
-            "agent_session": int(agent_sess * scale) if agent_sess else 58,
+            "human_ui_view": h_cnt,
+            "api_fetch": a_cnt,
+            "agent_session": s_cnt,
         }
 
         # Dynamic engagement metrics from interactions:

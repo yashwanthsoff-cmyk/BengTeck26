@@ -494,15 +494,16 @@ with tab_a:
                     st.markdown("Consolidate duplicate clusters into a single unified root-cause cluster.")
                     col_m1, col_m2 = st.columns(2)
                     with col_m1:
-                        source_opt = st.selectbox("Source Cluster (to absorb):", list(cluster_options.keys()), key="sb_merge_src")
+                        source_opt = st.selectbox("Source Cluster (to absorb):", list(cluster_options.keys()), index=0, key="sb_merge_src")
                     with col_m2:
-                        target_opt = st.selectbox("Target Cluster (destination):", list(cluster_options.keys()), key="sb_merge_tgt")
+                        tgt_default_idx = min(1, len(cluster_options) - 1)
+                        target_opt = st.selectbox("Target Cluster (destination):", list(cluster_options.keys()), index=tgt_default_idx, key="sb_merge_tgt")
 
                     if st.button("Merge Clusters", key="btn_execute_merge"):
                         src_id = cluster_options[source_opt].get("id") or cluster_options[source_opt].get("cluster_key")
                         tgt_id = cluster_options[target_opt].get("id") or cluster_options[target_opt].get("cluster_key")
                         if src_id == tgt_id:
-                            st.warning("Source and Target cluster cannot be the same.")
+                            st.warning("Source and Target cluster cannot be the same. Select two distinct clusters.")
                         else:
                             m_res = dx.merge_clusters(src_id, tgt_id)
                             if m_res.get("success"):
@@ -1102,10 +1103,11 @@ with tab_b:
 </div>
 """, unsafe_allow_html=True)
 
-        # Add Dependency Edge Form
+        # Add Dependency Edge Form (filter out dead/superseded requirements)
+        active_reqs = [r for r in reqs if str(r.get('status', '')).lower() not in ('superseded', 'dead')]
         with st.expander("[+] Add Dependency Link", expanded=False):
-            if len(reqs) >= 2:
-                req_options = {f"{r.get('requirement_text', '')[:40]}... (ID: {r['id']})": r["id"] for r in reqs}
+            if len(active_reqs) >= 2:
+                req_options = {f"{r.get('requirement_text', '')[:40]}... (ID: {r['id']})": r["id"] for r in active_reqs}
                 c_dep1, c_dep2 = st.columns([1, 1])
                 req_keys_list = list(req_options.keys())
                 with c_dep1:
@@ -1125,11 +1127,11 @@ with tab_b:
                         st.success(f"[SUCCESS] Connected: Requirement depends on prerequisite.")
                         st.rerun()
             else:
-                st.caption("Need at least 2 requirements to create dependencies.")
+                st.caption("Need at least 2 active requirements to create dependencies.")
 
         # Delay Impact Simulator
         st.markdown("### Ripple Delay Impact Simulator")
-        sim_options = {f"{r.get('requirement_text', '')[:40]}...": r["id"] for r in reqs}
+        sim_options = {f"{r.get('requirement_text', '')[:40]}...": r["id"] for r in active_reqs}
         if sim_options:
             sim_choice = st.selectbox("Select Requirement to Simulate Delay", list(sim_options.keys()), key="sim_delay_sel")
             sim_rid = sim_options[sim_choice]
@@ -1235,13 +1237,13 @@ with tab_c:
             })
 
     # Top KPI Metrics Dashboard
-    dash_data = dx.get_compliance_dashboard(selected_cid)
+    dash_data = dx.get_compliance_dashboard(selected_cid, intents_override=intents_data)
     col_c1, col_c2, col_c3, col_c4, col_c5 = st.columns(5)
     with col_c1:
         st.metric("Total Clauses", len(intents_data))
     with col_c2:
-        conf_rate = dash_data.get("conformance_rate", 0.85)
-        st.metric("Conformance Rate", f"{conf_rate:.1%}")
+        conf_rate = dash_data.get("conformance_rate", 0.70)
+        st.metric("Clause Verification Rate", f"{conf_rate:.1%}")
     with col_c3:
         grade_top = dash_data.get("grade", "B")
         st.metric("Compliance Grade", f"Grade {grade_top}")
@@ -1265,12 +1267,15 @@ with tab_c:
         st.info(f"Displaying {len(filtered_intents)} of {len(intents_data)} clauses with confidence >= {conf_filter_thresh:.0%}")
 
     # Feature C Visualizations & Conformance Breakdown
+    domain_scores = {cat.replace('_', '/').title(): dinfo["score"] for cat, dinfo in dash_data.get("by_category", {}).items()}
+    category_mean = sum(domain_scores.values()) / len(domain_scores) if domain_scores else conf_rate
+
     with st.expander("Conformance Gauge & Category Distribution", expanded=True):
         c_vcol1, c_vcol2, c_vcol3 = st.columns([1, 1, 1])
         with c_vcol1:
-            st.plotly_chart(lc.render_intent_conformance_gauge(conf_rate), use_container_width=True)
+            st.plotly_chart(lc.render_intent_conformance_gauge(category_mean, title="Category Domain Conformance"), use_container_width=True)
         with c_vcol2:
-            st.plotly_chart(lc.render_intent_domain_bars(), use_container_width=True)
+            st.plotly_chart(lc.render_intent_domain_bars(domain_scores), use_container_width=True)
         with c_vcol3:
             st.plotly_chart(lc.render_intent_status_donut(intents_data), use_container_width=True)
 
@@ -1795,7 +1800,9 @@ with tab_c:
             with nv_col_a:
                 nv_owner = st.text_input("Assigned Engineer", value="security-lead", key="nv_owner_input")
             with nv_col_b:
-                nv_deadline = st.text_input("Remediation Deadline", value="2026-09-15", key="nv_deadline_input")
+                from datetime import timedelta
+                default_deadline = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+                nv_deadline = st.text_input("Remediation Deadline", value=default_deadline, key="nv_deadline_input")
 
             if st.button("Submit Compliance Violation", key="btn_submit_violation"):
                 rec_res = dx.record_compliance_violation(
@@ -2279,21 +2286,30 @@ with tab_d:
                 ab_split = st.slider("Traffic Split (% Variant A)", 10, 90, 50, 5)
 
                 if st.form_submit_button("Launch A/B Test"):
-                    if ab_name.strip():
+                    if not ab_name.strip():
+                        st.warning("Please provide a test name.")
+                    elif ab_va == ab_vb:
+                        st.error("Variant A and Variant B must be different templates.")
+                    else:
                         new_ab = dx.create_ab_test(ab_name.strip(), ab_va, ab_vb, traffic_split=ab_split/100.0)
                         st.success(f"A/B Test '{ab_name}' launched successfully!")
                         st.rerun()
-                    else:
-                        st.warning("Please provide a test name.")
 
         if ab_tests:
             for t in ab_tests:
                 res = t.get("results") or {}
+                imp_a = max(int(res.get("variant_a_impressions", 0)), 1)
+                conv_a = int(res.get("variant_a_conversions", 0))
+                rate_a = conv_a / imp_a
+                imp_b = max(int(res.get("variant_b_impressions", 0)), 1)
+                conv_b = int(res.get("variant_b_conversions", 0))
+                rate_b = conv_b / imp_b
+                winner_id = res.get("winner") or (t.get("variant_b_id") if rate_b > rate_a else t.get("variant_a_id"))
                 st.markdown(
                     f"**Test:** `{t.get('test_name')}` | Status: `[{t.get('status', 'running').upper()}]` | "
-                    f"Variant A (`{t.get('variant_a_id')}`): {res.get('variant_a_impressions', 0)} views ({res.get('variant_a_conversions', 0)} completed) vs "
-                    f"Variant B (`{t.get('variant_b_id')}`): {res.get('variant_b_impressions', 0)} views ({res.get('variant_b_conversions', 0)} completed) | "
-                    f"Winner: **[{res.get('winner', t.get('variant_b_id')).upper()}]** ({res.get('statistical_confidence', 0.92):.0%} conf)"
+                    f"Variant A (`{t.get('variant_a_id')}`): {res.get('variant_a_impressions', 0)} views ({res.get('variant_a_conversions', 0)} completed, {rate_a:.1%}) vs "
+                    f"Variant B (`{t.get('variant_b_id')}`): {res.get('variant_b_impressions', 0)} views ({res.get('variant_b_conversions', 0)} completed, {rate_b:.1%}) | "
+                    f"Winner: **[{str(winner_id).upper()}]** ({res.get('statistical_confidence', 0.92):.0%} conf)"
                 )
         else:
             st.info("No active A/B tests. Create one above to benchmark contract templates.")
@@ -2483,7 +2499,7 @@ with tab_e:
             st.dataframe(df_ms, use_container_width=True, hide_index=True)
 
     # Feature E Multi-Session Comparison Visualization
-    st.plotly_chart(lc.render_multi_session_integrity_bar(), use_container_width=True)
+    st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores")), use_container_width=True)
 
     trend_res = dx.get_integrity_trend_7d(selected_session)
     st.markdown(f"**Integrity Trajectory:** `{trend_res['summary']}`")
@@ -2532,27 +2548,40 @@ with tab_e:
         else:
             integrity = st.session_state.get(f"last_integrity_{selected_session}", {})
 
-        if not integrity or integrity.get("integrity_score", 0.0) < 0.6:
-            integrity = {"integrity_score": 0.915, "reason": "Verified via snapshot ledger", "stale_memory_count": 0, "conflicts": []}
+        diagnosis = dx.diagnose_low_integrity(selected_session, checkpoint_id=selected_cp.get("id") if selected_cp else selected_cid)
+
+        if not integrity:
+            integrity = {"integrity_score": diagnosis.get("overall_integrity", 0.85), "reason": diagnosis.get("primary_root_cause", "Calculated via diagnosis engine")}
             st.session_state[f"last_integrity_{selected_session}"] = integrity
 
-        cur_score = integrity.get("integrity_score", 0.915)
-        cur_reason = integrity.get("reason", "Verified via snapshot ledger")
+        cur_score = integrity.get("integrity_score", 0.85)
+        cur_reason = integrity.get("reason", "Evaluated via memory ledger")
         cur_stale = integrity.get("stale_memory_count", 0)
         cur_conflicts = integrity.get("conflicts", [])
+
+        # Enforce rule: ANY critical factor escalates verdict to [BLOCKED]
+        is_blocked = (diagnosis.get("status") == "[BLOCKED]") or any(
+            f.get("status") == "[CRITICAL]" or f.get("impact", 0) >= 0.4
+            for f in diagnosis.get("factor_analysis", {}).values()
+        )
+        if is_blocked:
+            if cur_score >= 0.7:
+                cur_score = float(diagnosis.get("overall_integrity", 0.45))
+            verdict_status = "[BLOCKED]"
+        else:
+            verdict_status = "[SAFE]" if cur_score >= 0.7 else "[BLOCKED]"
 
         c_s1, c_s2, c_s3, c_s4 = st.columns(4)
         c_s1.metric("Current Score", f"{cur_score:.1%}")
         c_s2.metric("Stale Entries", f"{cur_stale}")
         c_s3.metric("Contradictions", f"{len(cur_conflicts)}")
-        c_s4.metric("Verification Status", "[SAFE]" if cur_score >= 0.7 else "[BLOCKED]")
+        c_s4.metric("Verification Status", verdict_status)
 
-        if cur_score >= 0.7:
+        if verdict_status == "[SAFE]":
             st.success(f"[SAFE TO RESUME] — {cur_reason}")
         else:
             st.error(f"[RESUME BLOCKED / UNRELIABLE] — {cur_reason}")
 
-        diagnosis = dx.diagnose_low_integrity(selected_session, checkpoint_id=selected_cp.get("id") if selected_cp else selected_cid)
         st.markdown(f"**Primary Root Cause:** `{diagnosis['primary_root_cause']}`")
 
         fa = diagnosis["factor_analysis"]
