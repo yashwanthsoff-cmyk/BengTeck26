@@ -451,6 +451,42 @@ class TestChartsEngine(unittest.TestCase):
         center_text_clause = clause_donut.layout.annotations[0].text
         self.assertIn("CLAUSES AUDITED", center_text_clause)
 
+    def test_zero_overlap_layout_guarantees(self):
+        """Verify structural collision guarantees on gauges, legends, and axis margins."""
+        # 1. Fix success rate gauge
+        fix_fig = lc.render_fix_success_gauge(0.667, 75.0)
+        self.assertGreaterEqual(fix_fig.data[0].domain.y[0], 0.20)
+        bot_ann_fix = [a for a in fix_fig.layout.annotations if "Target: 75%" in a.text and "Delta:" in a.text][0]
+        self.assertLessEqual(bot_ann_fix.y, 0.05)
+        self.assertNotIn("&bull;", bot_ann_fix.text)
+        self.assertIn("\u2022", bot_ann_fix.text)
+
+        # 2. Conformance gauge
+        conf_fig = lc.render_intent_conformance_gauge(0.70, target_score=0.85)
+        self.assertGreaterEqual(conf_fig.data[0].domain.y[0], 0.20)
+        bot_ann_conf = [a for a in conf_fig.layout.annotations if "Target: 85%" in a.text and "Delta:" in a.text][0]
+        self.assertLessEqual(bot_ann_conf.y, 0.05)
+        self.assertNotIn("&bull;", bot_ann_conf.text)
+        self.assertIn("\u2022", bot_ann_conf.text)
+
+        # 3. Severity bar legend at top right
+        sev_fig = lc.render_severity_distribution_bar()
+        self.assertGreaterEqual(sev_fig.layout.legend.y, 1.0)
+        self.assertTrue(sev_fig.layout.xaxis.automargin)
+        self.assertTrue(sev_fig.layout.yaxis.automargin)
+
+        # 4. Root cause ranked bar margin and automargin
+        rc_fig = lc.render_root_cause_ranked_bar()
+        self.assertTrue(rc_fig.layout.xaxis.automargin)
+        self.assertTrue(rc_fig.layout.yaxis.automargin)
+        self.assertGreaterEqual(rc_fig.layout.margin.b, 40)
+
+        # 5. Requirement and memory stacked bars top legend
+        req_fig = lc.render_requirement_lifecycle_stacked_bar()
+        self.assertGreaterEqual(req_fig.layout.legend.y, 1.0)
+        mem_fig = lc.render_memory_confidence_battery()
+        self.assertGreaterEqual(mem_fig.layout.legend.y, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

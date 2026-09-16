@@ -61,11 +61,13 @@ def _apply_layout_defaults(fig: go.Figure, title: str = "", height: int = 320) -
         tickfont=dict(family=FONT_FAMILY, size=10, color="#8E8E93"),
         gridcolor="rgba(15,16,18,0.06)",
         zerolinecolor="rgba(15,16,18,0.08)",
+        automargin=True,
     )
     fig.update_yaxes(
         tickfont=dict(family=FONT_FAMILY, size=10, color="#8E8E93"),
         gridcolor="rgba(15,16,18,0.06)",
         zerolinecolor="rgba(15,16,18,0.08)",
+        automargin=True,
     )
     return fig
 
@@ -683,8 +685,9 @@ def render_root_cause_ranked_bar(dead_ends: Optional[List[Dict]] = None) -> go.F
         for idx, (rc, cnt) in enumerate(sorted_rc):
             delta = sim_deltas[idx % len(sim_deltas)]
             trend = "worsening" if delta > 0 else ("improving" if delta < 0 else "stable")
+            clean_rc = (rc[:28] + "..") if len(rc) > 30 else rc
             items.append({
-                "Root Cause": f"{rc} {format_delta_label(delta)}",
+                "Root Cause": f"{clean_rc} {format_delta_label(delta)}",
                 "Incidents": cnt,
                 "Trend": trend,
             })
@@ -711,9 +714,11 @@ def render_root_cause_ranked_bar(dead_ends: Optional[List[Dict]] = None) -> go.F
             )
         ]
     )
-    fig.update_xaxes(title_text="Incident Occurrences", showgrid=True)
-    fig.update_yaxes(autorange="reversed")
-    return _apply_layout_defaults(fig, "Ranked Failure Root Causes with Checkpoint Trend Vectors", height=280)
+    fig.update_xaxes(title_text="Incident Occurrences", showgrid=True, automargin=True)
+    fig.update_yaxes(autorange="reversed", automargin=True)
+    fig = _apply_layout_defaults(fig, "Ranked Failure Root Causes with Checkpoint Trend Vectors", height=280)
+    fig.update_layout(margin=dict(l=10, r=24, t=44, b=42))
+    return fig
 
 
 def render_severity_distribution_bar(dead_ends: Optional[List[Dict]] = None) -> go.Figure:
@@ -758,10 +763,10 @@ def render_severity_distribution_bar(dead_ends: Optional[List[Dict]] = None) -> 
         )
         fig.update_layout(
             barmode="stack",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5, font=dict(size=11)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
         )
         fig.update_yaxes(autorange="reversed", automargin=True, title_text="Failure Type")
-        fig.update_xaxes(title_text="Incident Count", showgrid=True)
+        fig.update_xaxes(title_text="Incident Count", showgrid=True, automargin=True)
     else:
         fig = go.Figure(
             data=[
@@ -772,14 +777,14 @@ def render_severity_distribution_bar(dead_ends: Optional[List[Dict]] = None) -> 
         )
         fig.update_layout(
             barmode="stack",
-            legend=dict(orientation="h", yanchor="bottom", y=-0.35, xanchor="center", x=0.5, font=dict(size=11)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
         )
         fig.update_xaxes(
             tickangle=axis_guard["tickangle"],
             automargin=True,
             title_text="Failure Type",
         )
-        fig.update_yaxes(title_text="Incident Count", showgrid=True)
+        fig.update_yaxes(title_text="Incident Count", showgrid=True, automargin=True)
 
     return _apply_layout_defaults(fig, "Severity Distribution by Failure Type", height=300)
 
@@ -811,6 +816,7 @@ def render_fix_success_gauge(success_rate: float = 0.667, target_rate: float = 7
 
     fig = go.Figure(
         go.Indicator(
+            domain=dict(x=[0.05, 0.95], y=[0.24, 1.0]),
             mode="gauge+number+delta",
             value=val_pct,
             delta=delta_dict,
@@ -852,11 +858,12 @@ def render_fix_success_gauge(success_rate: float = 0.667, target_rate: float = 7
     diff_val = val_pct - target_rate
     diff_sign = "+" if diff_val > 0 else ""
     fig.add_annotation(
-        text=f"<span style='font-size:11px;font-weight:600;color:#8E8E93;letter-spacing:0.04em;'>Target: {target_rate:.0f}% &bull; Delta: {diff_sign}{diff_val:.1f}% vs Target</span>",
+        text=f"<span style='font-size:11px;font-weight:600;color:#8E8E93;letter-spacing:0.04em;'>Target: {target_rate:.0f}% \u2022 Delta: {diff_sign}{diff_val:.1f}% vs Target</span>",
         xref="paper",
         yref="paper",
         x=0.5,
-        y=0.20,
+        y=0.03,
+        yanchor="bottom",
         showarrow=False,
         font=dict(family=FONT_FAMILY, size=11, color="#8E8E93"),
     )
@@ -1090,9 +1097,9 @@ def render_requirement_lifecycle_stacked_bar(requirements: Optional[List[Dict]] 
     fig.update_layout(
         barmode="stack",
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5, font=dict(size=11)),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
     )
-    fig.update_xaxes(title_text=f"Requirements (Total: {total})", showgrid=True)
+    fig.update_xaxes(title_text=f"Requirements (Total: {total})", showgrid=True, automargin=True)
     fig.update_yaxes(visible=False)
     return _apply_layout_defaults(fig, f"Requirement Lifecycle Stage Progress ({total} Total)", height=160)
 
@@ -1207,6 +1214,7 @@ def render_intent_conformance_gauge(
 
     fig = go.Figure(
         go.Indicator(
+            domain=dict(x=[0.05, 0.95], y=[0.24, 1.0]),
             mode="gauge+number+delta",
             value=val_pct,
             delta=delta_dict,
@@ -1248,11 +1256,12 @@ def render_intent_conformance_gauge(
     diff_val = val_pct - target_pct
     diff_sign = "+" if diff_val > 0 else ""
     fig.add_annotation(
-        text=f"<span style='font-size:11px;font-weight:600;color:#8E8E93;letter-spacing:0.04em;'>Target: {target_pct:.0f}% &bull; Delta: {diff_sign}{diff_val:.1f}% vs Target</span>",
+        text=f"<span style='font-size:11px;font-weight:600;color:#8E8E93;letter-spacing:0.04em;'>Target: {target_pct:.0f}% \u2022 Delta: {diff_sign}{diff_val:.1f}% vs Target</span>",
         xref="paper",
         yref="paper",
         x=0.5,
-        y=0.20,
+        y=0.03,
+        yanchor="bottom",
         showarrow=False,
         font=dict(family=FONT_FAMILY, size=11, color="#8E8E93"),
     )
@@ -2098,9 +2107,9 @@ def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None)
     fig.update_layout(
         barmode="stack",
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5, font=dict(size=11)),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
     )
-    fig.update_xaxes(title_text=f"Memory Entries (Total: {total})", showgrid=True)
+    fig.update_xaxes(title_text=f"Memory Entries (Total: {total})", showgrid=True, automargin=True)
     fig.update_yaxes(visible=False)
     return _apply_layout_defaults(fig, "Agent Memory Confidence Battery Meter", height=160)
 
