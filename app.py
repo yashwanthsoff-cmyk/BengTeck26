@@ -117,6 +117,7 @@ st.caption("Enterprise developer experience bridging git/Entire checkpoints into
 # ==============================================================================
 # CROSS-FEATURE NARRATIVE PIPELINE (Checkpoint-Native Lifecycle Banner)
 # ==============================================================================
+with st.container():
     # Pull real historical trajectory series per stage (Master Rule #2)
     s1_spark = [3.0, 2.0, 4.0, 1.0, 2.0]  # Failure density across chk-001..chk-005
     s2_spark = [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]  # Real sprint burndown
