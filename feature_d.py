@@ -135,15 +135,16 @@ def _assemble_contract_payload(dx: "CheckpointDX", checkpoint_id: str, session_i
         "version": 1,
         "integrity_check": integrity,
         "unresolved_requirements": (lambda: [
-            seen.add(txt) or item
+            seen.add(norm_txt) or item
             for r in unresolved
             for txt in [str(r.get("requirement_text", "")).strip()]
+            for norm_txt in [txt.lower().rstrip(".,;!").strip()]
             for item in [{
                 "text": txt,
                 "status": str(r.get("status", "not_started")),
                 "priority": int(r["priority"]) if ("priority" in r and isinstance(r["priority"], (int, float))) else 3,
             }]
-            if txt and txt not in seen
+            if txt and norm_txt not in seen
         ])() if (seen := set()) is not None else [],
         "do_not_retry": (lambda: [
             seen_dnr.add(dnr_key) or item

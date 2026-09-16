@@ -347,6 +347,7 @@ def render_metric_sparkline_svg(
 def render_trend_chip_html(current: float, previous: float, label: str = "vs baseline", is_higher_better: bool = True) -> str:
     """Generates an inline HTML trend pill badge (&uarr; / &darr; / &rarr;) with zero emojis."""
     diff = current - previous
+    is_pct_scale = (abs(current) > 1.0 or abs(previous) > 1.0)
     if abs(diff) < 0.0001:
         arrow = "&rarr;"
         pct_str = "0.0%"
@@ -355,7 +356,7 @@ def render_trend_chip_html(current: float, previous: float, label: str = "vs bas
         chip_border = "#CBD5E1"
     elif diff > 0:
         arrow = "&uarr;"
-        pct_str = f"{diff:+.1f}%" if current > 1.0 else f"{diff * 100.0:+.1f}%"
+        pct_str = f"{diff:+.1f}%" if is_pct_scale else f"{diff * 100.0:+.1f}%"
         if is_higher_better:
             chip_bg = "#DCFCE7"
             chip_color = "#15803D"
@@ -366,7 +367,7 @@ def render_trend_chip_html(current: float, previous: float, label: str = "vs bas
             chip_border = "#FCA5A5"
     else:
         arrow = "&darr;"
-        pct_str = f"{diff:.1f}%" if current > 1.0 else f"{diff * 100.0:+.1f}%"
+        pct_str = f"{diff:.1f}%" if is_pct_scale else f"{diff * 100.0:.1f}%"
         if is_higher_better:
             chip_bg = "#FEE2E2"
             chip_color = "#B91C1C"
