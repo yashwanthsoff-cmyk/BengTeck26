@@ -118,7 +118,32 @@ st.caption("Enterprise developer experience bridging git/Entire checkpoints into
 # CROSS-FEATURE NARRATIVE PIPELINE (Checkpoint-Native Lifecycle Banner)
 # ==============================================================================
 with st.container():
-    st.markdown("""
+    stages_pipeline = [
+        {"name": "Dead-End", "status": "pass", "score": 92.0, "spark": [70, 75, 80, 85, 92], "detail": "2 Traces Guarded", "num": "01", "title": "Dead-End Registry"},
+        {"name": "Ledger", "status": "pass", "score": 88.0, "spark": [100, 85, 70, 50, 20], "detail": "3 Epics | 11 Pts DAG", "num": "02", "title": "Requirement Ledger"},
+        {"name": "Conformance", "status": "pass", "score": 82.0, "spark": [76, 78, 80, 81, 82], "detail": "Grade B | 4 Factors", "num": "03", "title": "Intent Conformance"},
+        {"name": "Contract", "status": "pass", "score": 95.0, "spark": [60, 75, 82, 90, 95], "detail": "v2 Signed | 715h ROI", "num": "04", "title": "Resume Contract"},
+        {"name": "Integrity", "status": "pass", "score": 91.5, "spark": [85, 88, 86, 90, 91.5], "detail": "91.5% Confidence", "num": "05", "title": "Resume Integrity"},
+    ]
+
+    cards_html = []
+    for s in stages_pipeline:
+        spark_svg = lc.render_metric_sparkline_svg(s["spark"], color="#0071E3", height=20, width=54)
+        c_html = (
+            f'<div style="background:rgba(255,255,255,0.75);border:1px solid rgba(15,16,18,0.08);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.03);">'
+            f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
+            f'    <span style="font-size:10px;font-family:var(--font-mono);color:var(--accent-primary);font-weight:700;">STAGE {s["num"]}</span>'
+            f'    {spark_svg}'
+            f'  </div>'
+            f'  <div style="font-size:12.5px;font-weight:600;color:var(--text-primary);margin:2px 0;">{s["title"]}</div>'
+            f'  <div style="font-size:10.5px;color:var(--text-secondary);">{s["detail"]}</div>'
+            f'</div>'
+        )
+        cards_html.append(c_html)
+
+    pipeline_conn_html = lc.render_pipeline_health_connector_html(stages_pipeline)
+
+    st.markdown(f"""
     <div style="background: var(--bg-surface); border: 1px solid var(--border-dim); border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 24px; box-shadow: var(--shadow-glass);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <span style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary);">
@@ -128,39 +153,13 @@ with st.container():
           [ACTIVE PIPELINE: 5 ENGINES SYNCHRONIZED]
         </span>
       </div>
-      <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr auto 1fr; gap: 8px; align-items: center;">
-        <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 12px;">
-          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-primary); font-weight: 600;">STAGE 01</div>
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 0;">Dead-End Registry</div>
-          <div style="font-size: 11px; color: var(--text-secondary);">2 Traces Filtered &middot; Anti-Patterns Guarded</div>
-        </div>
-        <div style="color: var(--text-secondary); font-weight: bold; text-align: center; font-size: 14px;">&rarr;</div>
-        <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 12px;">
-          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-primary); font-weight: 600;">STAGE 02</div>
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 0;">Requirement Ledger</div>
-          <div style="font-size: 11px; color: var(--text-secondary);">3 Epics &middot; 11 Pts DAG &middot; Gherkin Stubs</div>
-        </div>
-        <div style="color: var(--text-secondary); font-weight: bold; text-align: center; font-size: 14px;">&rarr;</div>
-        <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 12px;">
-          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-primary); font-weight: 600;">STAGE 03</div>
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 0;">Intent Conformance</div>
-          <div style="font-size: 11px; color: var(--text-secondary);">Grade B (82.0%) &middot; 4-Factor Weighted</div>
-        </div>
-        <div style="color: var(--text-secondary); font-weight: bold; text-align: center; font-size: 14px;">&rarr;</div>
-        <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 12px;">
-          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-primary); font-weight: 600;">STAGE 04</div>
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 0;">Resume Contract</div>
-          <div style="font-size: 11px; color: var(--text-secondary);">v2 Signed &middot; Zero-Loss Handover &middot; 715h ROI</div>
-        </div>
-        <div style="color: var(--text-secondary); font-weight: bold; text-align: center; font-size: 14px;">&rarr;</div>
-        <div style="background: rgba(255,255,255,0.7); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 12px;">
-          <div style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-primary); font-weight: 600;">STAGE 05</div>
-          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 2px 0;">Resume Integrity</div>
-          <div style="font-size: 11px; color: var(--text-secondary);">91.5% Confidence &middot; Multi-Session Decay</div>
-        </div>
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; margin-bottom: 12px;">
+        {"".join(cards_html)}
       </div>
+      {pipeline_conn_html}
     </div>
     """, unsafe_allow_html=True)
+
 
     with st.expander("View Cross-Feature Data Lineage & End-to-End Traceability Matrix", expanded=False):
         st.markdown(
@@ -266,6 +265,12 @@ with tab_a:
 
     # Feature A Visualizations & Distribution Analytics
     with st.expander("Dead-End Analytics & Visual Distributions", expanded=True):
+        f_pair1, f_pair2 = st.columns([1, 1])
+        with f_pair1:
+            st.plotly_chart(lc.render_dead_end_type_donut(dead_ends), use_container_width=True)
+        with f_pair2:
+            st.markdown(lc.render_dead_end_ranked_list(dead_ends), unsafe_allow_html=True)
+
         f_col1, f_col2, f_col3 = st.columns(3)
         with f_col1:
             st.plotly_chart(lc.render_fix_success_gauge(success_rate=success_rate), use_container_width=True)
@@ -326,16 +331,26 @@ with tab_a:
             risk_lvl = conf.get("risk_level", "[LOW RISK]")
             ci = conf.get("confidence_interval", [0.0, 0.0])
 
+            # Range Bar Component for Similarity & Confidence Interval
+            st.markdown(
+                lc.render_range_bar_html(
+                    val=score * 100.0,
+                    min_val=ci[0] * 100.0,
+                    max_val=ci[1] * 100.0,
+                    label="Token Similarity vs Recorded Failure Patterns",
+                ),
+                unsafe_allow_html=True,
+            )
+
             # Metric Bar
-            m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+            m_col1, m_col2, m_col3 = st.columns(3)
             with m_col1:
                 st.metric("Token Similarity", f"{score:.1%}")
             with m_col2:
-                st.metric("Confidence Interval", f"[{ci[0]:.1%} - {ci[1]:.1%}]")
-            with m_col3:
                 st.metric("Risk Evaluation", risk_lvl)
-            with m_col4:
+            with m_col3:
                 st.metric("Recency Weight", f"{conf.get('recency_weight', 1.0):.2f}")
+
 
             # Plain Language Reasoning Callout with Pill Badges
             reasoning_text = conf.get("plain_reasoning", "")
@@ -716,14 +731,19 @@ with tab_b:
     # Feature B Visualizations & Sprint Velocity
     with st.expander("Requirement Visual Analytics & Sprint Burndown", expanded=True):
         st.plotly_chart(lc.render_requirement_lifecycle_stacked_bar(reqs), use_container_width=True)
-        b_col1, b_col2, b_col3 = st.columns(3)
+        b_col1, b_col2 = st.columns(2)
         with b_col1:
-            st.plotly_chart(lc.render_requirement_status_donut(reqs), use_container_width=True)
+            st.plotly_chart(lc.render_sprint_burndown_variance_chart(), use_container_width=True)
         with b_col2:
             st.plotly_chart(lc.render_priority_vs_effort_scatter(reqs), use_container_width=True)
-        with b_col3:
-            st.plotly_chart(lc.render_sprint_burndown_variance_chart(), use_container_width=True)
+
+        b_sub1, b_sub2 = st.columns(2)
+        with b_sub1:
+            st.plotly_chart(lc.render_requirement_aging_heatmap(), use_container_width=True)
+        with b_sub2:
+            st.plotly_chart(lc.render_requirement_status_donut(reqs), use_container_width=True)
         st.caption("**Requirement Velocity Takeaway**: Sprint burndown is currently ahead of ideal pace (-0.5 pts variance) with top P0 priority assigned to OAuth2 Token Expiry.")
+
 
     # Sub-tabs for Feature 2 capabilities
     b_tab_ledger, b_tab_prioritize, b_tab_effort, b_tab_criteria, b_tab_graph = st.tabs([
@@ -1095,23 +1115,42 @@ with tab_b:
         # Visual DAG Flow Diagram
         st.markdown("#### Visual Dependency Flow (Directed Acyclic Graph)")
         st.markdown("""
-<div class="dag-container">
-  <div class="dag-node">
-    <strong>OAuth2 Token Expiry</strong><br>
-    <span style="font-size:11px;color:#555">P0 · 3 pts · Done</span>
+<div style="display: flex; align-items: center; justify-content: center; gap: 14px; padding: 18px 24px; background: rgba(248,250,252,0.8); border: 1px solid rgba(15,16,18,0.08); border-radius: 12px; margin: 12px 0 20px 0; overflow-x: auto;">
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #00A651; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,166,81,0.08); text-align: left; min-width: 170px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <span style="font-size: 10px; font-weight: 700; color: #00A651; letter-spacing: 0.05em;">[DONE]</span>
+      <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">3 pts</span>
+    </div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">OAuth2 Token Expiry</div>
+    <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P0 Priority</div>
   </div>
-  <div class="dag-arrow">&rarr;</div>
-  <div class="dag-node">
-    <strong>TOTP Multi-Factor Auth</strong><br>
-    <span style="font-size:11px;color:#555">P1 · 5 pts · In Progress</span>
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <span style="font-size: 18px; font-weight: bold; color: #00A651;">&rarr;</span>
+    <span style="font-size: 9px; color: #00A651; font-weight: 600; text-transform: uppercase;">unblocks</span>
   </div>
-  <div class="dag-arrow">&rarr;</div>
-  <div class="dag-node">
-    <strong>CSRF Cookie Guard</strong><br>
-    <span style="font-size:11px;color:#555">P1 · 3 pts · Blocked</span>
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #0071E3; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(0,113,227,0.08); text-align: left; min-width: 170px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <span style="font-size: 10px; font-weight: 700; color: #0071E3; letter-spacing: 0.05em;">[IN PROGRESS]</span>
+      <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">5 pts</span>
+    </div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">TOTP Multi-Factor Auth</div>
+    <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P1 Priority</div>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <span style="font-size: 18px; font-weight: bold; color: #E3001E;">&rarr;</span>
+    <span style="font-size: 9px; color: #E3001E; font-weight: 600; text-transform: uppercase;">blocks</span>
+  </div>
+  <div style="background: rgba(255,255,255,0.95); border: 1.5px solid #E3001E; border-radius: 10px; padding: 12px 16px; box-shadow: 0 2px 6px rgba(227,0,30,0.08); text-align: left; min-width: 170px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <span style="font-size: 10px; font-weight: 700; color: #E3001E; letter-spacing: 0.05em;">[BLOCKED]</span>
+      <span style="font-size: 10px; font-family: monospace; color: #8E8E93;">3 pts</span>
+    </div>
+    <div style="font-size: 12px; font-weight: 600; color: #0F1012;">CSRF Cookie Guard</div>
+    <div style="font-size: 10.5px; color: #8E8E93; margin-top: 2px;">P1 Priority</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
+
 
         # Add Dependency Edge Form (filter out dead/superseded requirements)
         active_reqs = [r for r in reqs if str(r.get('status', '')).lower() not in ('superseded', 'dead')]
@@ -1281,18 +1320,33 @@ with tab_c:
     category_mean = sum(domain_scores.values()) / len(domain_scores) if domain_scores else conf_rate
 
     with st.expander("Conformance Gauge & Category Distribution", expanded=True):
-        c_vcol1, c_vcol2, c_vcol3 = st.columns([1, 1, 1])
-        with c_vcol1:
+        c_top1, c_top2 = st.columns([1, 1])
+        with c_top1:
             st.plotly_chart(lc.render_intent_conformance_gauge(category_mean, title="Overall Conformance Index", prev_score=0.80), use_container_width=True)
-        with c_vcol2:
-            domain_toggle = st.radio("Domain View", ["Radial Gauges", "Horizontal Bars"], horizontal=True, key="intent_domain_view_mode")
-            if "Radial" in domain_toggle:
+        with c_top2:
+            domain_toggle = st.radio("Domain Presentation Mode", ["Paired Donut + Ranked List", "Radial Gauges", "Horizontal Bars"], horizontal=True, key="intent_domain_view_mode")
+            if domain_toggle == "Radial Gauges":
                 st.plotly_chart(lc.render_domain_radial_gauges(domain_scores), use_container_width=True)
-            else:
+            elif domain_toggle == "Horizontal Bars":
                 st.plotly_chart(lc.render_intent_domain_bars(domain_scores), use_container_width=True)
-        with c_vcol3:
-            st.plotly_chart(lc.render_intent_status_donut(intents_data), use_container_width=True)
+            else:
+                st.plotly_chart(lc.render_domain_conformance_donut(domain_scores), use_container_width=True)
+
+        if domain_toggle == "Paired Donut + Ranked List":
+            c_rank_col1, c_rank_col2 = st.columns([1, 1])
+            with c_rank_col1:
+                st.markdown(lc.render_domain_ranked_list(domain_scores), unsafe_allow_html=True)
+            with c_rank_col2:
+                st.markdown(lc.render_clause_ranked_list(intents_data), unsafe_allow_html=True)
+        else:
+            c_cl1, c_cl2 = st.columns([1, 1])
+            with c_cl1:
+                st.plotly_chart(lc.render_clause_distribution_donut(intents_data), use_container_width=True)
+            with c_cl2:
+                st.markdown(lc.render_clause_ranked_list(intents_data), unsafe_allow_html=True)
+
         st.caption(f"**Conformance Takeaway**: Security and UI/UX exceed 90% conformance. Active remediation targets Performance (68.0%).")
+
 
     # 2. Sub-Tabs for Feature 3 Capabilities
     c_tab_match, c_tab_score, c_tab_remedy, c_tab_clusters, c_tab_audit = st.tabs([
@@ -2056,8 +2110,21 @@ with tab_d:
                     d2.metric("Dead-End Guardrails", len(contract_data.get("do_not_retry", [])))
                     d3.metric("Conformance Gaps", len(contract_data.get("flagged_gaps", [])))
 
+                n_open = len(contract_data.get("unresolved_requirements", []))
+                n_rails = len(contract_data.get("do_not_retry", []))
+                n_gaps = len(contract_data.get("flagged_gaps", []))
+                st.markdown(f"""
+                <div style="background: rgba(248, 250, 252, 0.85); border: 1px solid rgba(15,16,18,0.08); border-radius: 8px; padding: 10px 14px; margin: 10px 0 6px 0;">
+                  <div style="font-size: 11px; font-weight: 700; color: #8E8E93; letter-spacing: 0.06em; text-transform: uppercase;">CONTRACT PAYLOAD SUMMARY</div>
+                  <div style="font-size: 12.5px; font-weight: 600; color: #0F1012; margin: 3px 0;">
+                    {n_open} Open Requirements &middot; {n_rails} Guardrails &middot; {n_gaps} Conformance Gaps
+                  </div>
+                  <div style="font-size: 11px; color: #64748B;">Schema: Draft-7 Valid &middot; Format: JSON &middot; Purpose: {selected_purpose.upper()}</div>
+                </div>
+                """, unsafe_allow_html=True)
                 with st.expander("View Full Contract Payload JSON", expanded=False):
                     st.json(contract_data)
+
 
                 col_d_json, col_d_md = st.columns(2)
                 with col_d_json:
@@ -2308,6 +2375,7 @@ with tab_d:
                         st.rerun()
 
         if ab_tests:
+            st.plotly_chart(lc.render_ab_test_comparison_bars(ab_tests), use_container_width=True)
             for t in ab_tests:
                 res = t.get("results") or {}
                 imp_a = max(int(res.get("variant_a_impressions", 0)), 1)
@@ -2323,6 +2391,7 @@ with tab_d:
                     f"Variant B (`{t.get('variant_b_id')}`): {res.get('variant_b_impressions', 0)} views ({res.get('variant_b_conversions', 0)} completed, {rate_b:.1%}) | "
                     f"Winner: **[{str(winner_id).upper()}]** ({res.get('statistical_confidence', 0.92):.0%} conf)"
                 )
+
         else:
             st.info("No active A/B tests. Create one above to benchmark contract templates.")
 
@@ -2428,6 +2497,13 @@ with tab_d:
         c_col2.metric("API Fetch", cb.get("api_fetch", 86))
         c_col3.metric("Autonomous Agent Sessions", cb.get("agent_session", 58))
 
+        ch_pair1, ch_pair2 = st.columns([1, 1])
+        with ch_pair1:
+            st.plotly_chart(lc.render_consumer_channel_donut(cb), use_container_width=True)
+        with ch_pair2:
+            st.markdown(lc.render_consumer_channel_ranked_list(cb), unsafe_allow_html=True)
+
+
         st.markdown("#### Drop-off Funnel & Engagement Visualizations")
         d_vcol1, d_vcol2 = st.columns(2)
         with d_vcol1:
@@ -2521,8 +2597,13 @@ with tab_e:
             st.dataframe(df_ms, use_container_width=True, hide_index=True)
 
     # Feature E Multi-Session Comparison Visualization
-    st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores"), aggregate_score=multi_int.get("aggregate_score")), use_container_width=True)
+    ms_pair1, ms_pair2 = st.columns([1, 1])
+    with ms_pair1:
+        st.plotly_chart(lc.render_multi_session_integrity_bar(multi_int.get("session_scores"), aggregate_score=multi_int.get("aggregate_score")), use_container_width=True)
+    with ms_pair2:
+        st.markdown(lc.render_multi_session_ranked_list(multi_int.get("session_scores")), unsafe_allow_html=True)
     st.caption(f"**Multi-Session Takeaway**: Aggregate baseline sits at {multi_int['aggregate_score']:.1%} with {multi_int['coverage_ratio']:.1%} requirement cross-coverage.")
+
 
     trend_res = dx.get_integrity_trend_7d(selected_session)
     st.markdown(f"**Integrity Trajectory:** `{trend_res['summary']}`")
@@ -2746,6 +2827,12 @@ with tab_e:
                 {"key": "csrf_cookie_policy", "value": "Double-submit cookie verification enabled with SameSite=Lax", "confidence": 0.82, "created_at": "2026-09-08T16:00:00Z"},
             ]
 
+        mem_p1, mem_p2 = st.columns([1, 1])
+        with mem_p1:
+            st.plotly_chart(lc.render_memory_confidence_donut(memories), use_container_width=True)
+        with mem_p2:
+            st.markdown(lc.render_memory_ranked_list(memories), unsafe_allow_html=True)
+
         st.plotly_chart(lc.render_memory_confidence_battery(), use_container_width=True)
         st.plotly_chart(lc.render_memory_confidence_histogram(), use_container_width=True)
         st.caption("**Memory Resilience Takeaway**: 82% of active memory entries are within fresh high-confidence intervals (>0.80). TTL policy prevents stale drift.")
@@ -2768,7 +2855,7 @@ with tab_e:
                     except Exception:
                         pass
 
-                mc1, mc2, mc3 = st.columns([3, 1, 1])
+                mc1, mc2, mc3 = st.columns([2.5, 2.5, 1])
                 with mc1:
                     freshness_tag = "[Stale >72h]" if is_stale else "[Fresh]"
                     st.markdown(f"**Key:** `{m['key']}` &nbsp; `{freshness_tag}`")
@@ -2776,10 +2863,17 @@ with tab_e:
                     if is_stale:
                         st.caption("Stale: 0.7x discount applied in coverage calculation.")
                 with mc2:
-                    st.markdown(f"Stored: `{stored_conf:.2f}`")
-                    st.markdown(f"Eff: `{eff_conf:.2f}`")
-                    if eff_conf <= 0.3:
-                        st.caption("Decayed below 0.3 threshold")
+                    st.markdown(
+                        lc.render_range_bar_html(
+                            val=eff_conf * 100.0,
+                            min_val=30.0,
+                            max_val=stored_conf * 100.0,
+                            label="Confidence (Decayed -> Stored)",
+                            unit="%",
+                        ),
+                        unsafe_allow_html=True,
+                    )
+
                 with mc3:
                     if st.button("Reject", key=f"down_{unique_key}"):
                         dx.record_human_feedback(selected_cid, m['key'], was_correct=False)

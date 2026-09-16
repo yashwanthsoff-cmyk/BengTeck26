@@ -13,7 +13,8 @@ class TestChartsEngine(unittest.TestCase):
         fig = lc.render_empty_chart_state("Custom Title", "Custom Reason")
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.layout.annotations), 1)
-        self.assertIn("Custom Title", fig.layout.annotations[0].text)
+        self.assertIn("CUSTOM TITLE", fig.layout.annotations[0].text)
+        self.assertIn("Custom Reason", fig.layout.annotations[0].text)
 
     def test_metric_sparkline_svg(self):
         # Empty/single data points
@@ -146,7 +147,7 @@ class TestChartsEngine(unittest.TestCase):
         fig = lc.render_sprint_burndown_variance_chart()
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.data), 2)
-        self.assertEqual(fig.data[1].fill, "tonexty")
+        self.assertEqual(fig.data[1].fill, "tozeroy")
 
     def test_render_priority_vs_effort_scatter(self):
         fig = lc.render_priority_vs_effort_scatter()
@@ -180,6 +181,54 @@ class TestChartsEngine(unittest.TestCase):
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].type, "scatter")
 
+    # Master UI/UX Components
+    def test_range_bar_html(self):
+        # Normal confidence interval
+        html_normal = lc.render_range_bar_html(84.0, 78.0, 91.0, label="Accuracy")
+        self.assertIn("Accuracy", html_normal)
+        self.assertIn("84.0%", html_normal)
+        self.assertIn("[78.0 - 91.0%]", html_normal)
+        self.assertIn("style=\"position:absolute;left:78.0%", html_normal)
+
+        # Degenerate interval (insufficient data fallback)
+        html_degen = lc.render_range_bar_html(0.0, 0.0, 0.0, label="Degenerate")
+        self.assertIn("Not enough data yet (insufficient confidence interval)", html_degen)
+
+    def test_ranked_list_html(self):
+        items = [
+            {"label": "Logic Loop", "value": "12", "percentage": 54.5, "sublabel": "Active issue"},
+            {"label": "Syntax Error", "value": "6", "percentage": 27.3, "sublabel": "Resolved"},
+            {"label": "Timeout", "value": "4", "percentage": 18.2, "sublabel": "Resolved"},
+        ]
+        html = lc.render_ranked_list_html(items, title="Dead-End Types")
+        self.assertIn("DEAD-END TYPES", html)
+        self.assertIn("Logic Loop", html)
+        self.assertIn("54.5%", html)
+
+    def test_pipeline_health_connector_html(self):
+        stages = [
+            {"name": "Pre-Flight", "status": "pass", "score": 95.0},
+            {"name": "Ledger", "status": "pass", "score": 90.0},
+            {"name": "Conformance", "status": "warn", "score": 75.0},
+            {"name": "Contract", "status": "pass", "score": 88.0},
+            {"name": "Resume", "status": "fail", "score": 58.0},
+        ]
+        html = lc.render_pipeline_health_connector_html(stages)
+        self.assertIn("PRE-FLIGHT", html)
+        self.assertIn("#00A651", html)  # pass green
+        self.assertIn("#F5A623", html)  # warn amber
+        self.assertIn("#E3001E", html)  # fail red
+
+    def test_ab_test_comparison_bars(self):
+        tests = [
+            {"name": "Template Alpha", "v1_val": 82.0, "v2_val": 94.0, "metric": "Conformance", "unit": "%"},
+            {"name": "Template Beta", "v1_val": 70.0, "v2_val": 65.0, "metric": "Latency", "unit": "ms"},
+        ]
+        fig = lc.render_ab_test_comparison_bars(tests)
+        self.assertIsInstance(fig, go.Figure)
+        self.assertEqual(len(fig.data), 2)  # Variant A and Variant B
+
 
 if __name__ == "__main__":
     unittest.main()
+
