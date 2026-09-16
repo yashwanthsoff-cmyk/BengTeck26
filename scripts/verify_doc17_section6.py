@@ -41,6 +41,11 @@ def run_verification():
     raw_payload, _, _ = _assemble_contract_payload(dx, checkpoint_id, session_id)
     raw_payload["version"] = 1
     raw_payload["template"] = "dev"
+    weights_info = dx.calculate_synthesis_weights("development", checkpoint_id)
+    conflicts = dx.detect_feature_conflicts(checkpoint_id, session_id)
+    raw_payload["contract_purpose"] = "development"
+    raw_payload["synthesis_weights"] = weights_info["final_weights"]
+    raw_payload["conflicts"] = conflicts
 
     res_dev = dx.generate_resume_contract(checkpoint_id, session_id, template="dev")
     dev_contract = res_dev["contract"]
