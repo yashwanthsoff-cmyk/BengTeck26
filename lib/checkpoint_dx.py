@@ -3540,19 +3540,10 @@ The engineering team recommends adopting the following verified remedy:
             covered_stale = sum(1 for row in requirement_rows if _matches_target_keys(row[0], confident_but_stale) and not _matches_target_keys(row[0], confident_and_fresh))
             total = len(requirement_rows)
             
-            # Coverage calculation with broad session memory confidence weighting
-            coverage_ratio = (covered_fresh + 0.7 * covered_stale) / total if total > 0 else 1.0
-            avg_mem_conf = sum(float(r[1]) if len(r) > 1 else 0.85 for r in memory_rows) / len(memory_rows) if memory_rows else 0.85
+            score = round((covered_fresh + 0.7 * covered_stale) / total, 3) if total > 0 else 1.0
 
-            if covered_fresh > 0 or coverage_ratio > 0.5:
-                score = round(max(0.70, min(0.98, coverage_ratio * 0.45 + avg_mem_conf * 0.50)), 3)
-            elif coverage_ratio > 0:
-                score = round(max(0.50, coverage_ratio * avg_mem_conf), 3)
-            else:
-                score = round(avg_mem_conf * 0.6, 3) if avg_mem_conf > 0.8 else 0.0
-
-            if score >= 0.70 and freshness["stale_count"] <= 4:
-                reason = f"OK — Verified via snapshot ledger ({covered_fresh} of {total} requirements mapped to fresh memory)"
+            if score > 0.7 and freshness["stale_count"] == 0:
+                reason = "OK"
             else:
                 reason = (
                     f"{covered_fresh} fresh + {covered_stale} stale-but-present matches out of {total} open requirements"
