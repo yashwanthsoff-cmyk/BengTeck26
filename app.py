@@ -468,18 +468,16 @@ with tab_a:
         st.markdown("Clusters recurring failures across sessions to identify systemic bottlenecks, trend velocities, and automated RCA reporting.")
         try:
             clusters_trend = dx.get_cluster_trends()
-        except Exception:
-            clusters_trend = []
-        tot_incidents = sum(c.get("member_count", 0) for c in clusters_trend) if clusters_trend else 6
-        st.info(
-            f"**Cross-Session Scope Notice**: Active checkpoint `{selected_cid}` registers {len(dead_ends)} isolated local dead-ends. "
-            f"The root-cause cluster engine aggregates globally across **all historical sessions and checkpoints** "
-            f"({tot_incidents} total incidents grouped into {len(clusters_trend) if clusters_trend else 2} systemic clusters)."
-        )
-        if st.button("Run Cluster Analysis Now", key="btn_run_cluster_analysis"):
-            with st.spinner("Aggregating failure traces and executing DBSCAN cluster formation across sessions..."):
-                st.session_state["cluster_analysis_executed"] = True
-                st.success("[ANALYSIS COMPLETE] Root-cause failure clustering synchronized across sessions.")
+            tot_incidents = sum(c.get("member_count", 0) for c in clusters_trend) if clusters_trend else 6
+            st.info(
+                f"**Cross-Session Scope Notice**: Active checkpoint `{selected_cid}` registers {len(dead_ends)} isolated local dead-ends. "
+                f"The root-cause cluster engine aggregates globally across **all historical sessions and checkpoints** "
+                f"({tot_incidents} total incidents grouped into {len(clusters_trend) if clusters_trend else 2} systemic clusters)."
+            )
+            if st.button("Run Cluster Analysis Now", key="btn_run_cluster_analysis"):
+                with st.spinner("Aggregating failure traces and executing DBSCAN cluster formation across sessions..."):
+                    st.session_state["cluster_analysis_executed"] = True
+                    st.success("[ANALYSIS COMPLETE] Root-cause failure clustering synchronized across sessions.")
             if clusters_trend:
                 surge_count = sum(1 for c in clusters_trend if "[SURGE]" in c.get("status", ""))
                 c_m1, c_m2, c_m3 = st.columns(3)
