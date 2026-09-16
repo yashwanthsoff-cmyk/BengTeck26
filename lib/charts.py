@@ -786,7 +786,9 @@ def render_severity_distribution_bar(dead_ends: Optional[List[Dict]] = None) -> 
         )
         fig.update_yaxes(title_text="Incident Count", showgrid=True, automargin=True)
 
-    return _apply_layout_defaults(fig, "Severity Distribution by Failure Type", height=300)
+    fig = _apply_layout_defaults(fig, "Severity Distribution by Failure Type", height=300)
+    fig.update_layout(margin=dict(l=24, r=24, t=55, b=36))
+    return fig
 
 
 def render_fix_success_gauge(success_rate: float = 0.667, target_rate: float = 75.0) -> go.Figure:
@@ -1097,11 +1099,20 @@ def render_requirement_lifecycle_stacked_bar(requirements: Optional[List[Dict]] 
     fig.update_layout(
         barmode="stack",
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5,
+            font=dict(family=FONT_FAMILY, size=10),
+        ),
     )
-    fig.update_xaxes(title_text=f"Requirements (Total: {total})", showgrid=True, automargin=True)
+    fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
-    return _apply_layout_defaults(fig, f"Requirement Lifecycle Stage Progress ({total} Total)", height=160)
+    fig = _apply_layout_defaults(fig, f"Requirement Lifecycle Stage Progress ({total} Total)", height=160)
+    fig.update_layout(margin=dict(l=24, r=24, t=36, b=45))
+    return fig
 
 
 def render_requirement_aging_heatmap(requirements: Optional[List[Dict]] = None) -> go.Figure:
@@ -2107,11 +2118,20 @@ def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None)
     fig.update_layout(
         barmode="stack",
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1.0, font=dict(family=FONT_FAMILY, size=10)),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5,
+            font=dict(family=FONT_FAMILY, size=10),
+        ),
     )
-    fig.update_xaxes(title_text=f"Memory Entries (Total: {total})", showgrid=True, automargin=True)
+    fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False)
-    return _apply_layout_defaults(fig, "Agent Memory Confidence Battery Meter", height=160)
+    fig = _apply_layout_defaults(fig, f"Agent Memory Confidence Battery Meter ({total} Entries)", height=160)
+    fig.update_layout(margin=dict(l=24, r=24, t=36, b=45))
+    return fig
 
 
 def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: float = 0.852) -> go.Figure:

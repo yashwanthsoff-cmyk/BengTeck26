@@ -481,11 +481,18 @@ class TestChartsEngine(unittest.TestCase):
         self.assertTrue(rc_fig.layout.yaxis.automargin)
         self.assertGreaterEqual(rc_fig.layout.margin.b, 40)
 
-        # 5. Requirement and memory stacked bars top legend
+        # 5. Requirement and memory stacked bars zero-overlap legend & margins
         req_fig = lc.render_requirement_lifecycle_stacked_bar()
-        self.assertGreaterEqual(req_fig.layout.legend.y, 1.0)
+        self.assertTrue(req_fig.layout.showlegend)
+        self.assertFalse(req_fig.layout.xaxis.visible)
+        self.assertLessEqual(req_fig.layout.legend.y, 0.0)
+        self.assertGreaterEqual(req_fig.layout.margin.b, 40)
+
         mem_fig = lc.render_memory_confidence_battery()
-        self.assertGreaterEqual(mem_fig.layout.legend.y, 1.0)
+        self.assertTrue(mem_fig.layout.showlegend)
+        self.assertFalse(mem_fig.layout.xaxis.visible)
+        self.assertLessEqual(mem_fig.layout.legend.y, 0.0)
+        self.assertGreaterEqual(mem_fig.layout.margin.b, 40)
 
 
 if __name__ == "__main__":
