@@ -973,6 +973,11 @@ def render_intent_status_donut(intents_data: Optional[List[Dict]] = None) -> go.
     )
 
 
+# Export canonical and alias names for Clause Conformance Donut
+render_clause_distribution_donut = render_intent_status_donut
+
+
+
 def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
     """Ranked leaderboard list paired beside Clause Conformance Donut."""
     status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
