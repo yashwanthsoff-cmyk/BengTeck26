@@ -964,3 +964,96 @@ Added 7 new dedicated automated unit tests to `tests/test_checkpoint_dx.py`:
 - **Feature Verification**: 5/5 Features Production-Grade (`scripts/verify_all_5_features.py`).
 - **Design System**: 9/9 Checks PASS (`verify_ui.py`, 26,990 bytes CSS).
 - **Strict Zero-Emoji Mandate**: 0 emojis across 100% of codebase files.
+
+---
+
+## 17. Section 17: Systematic Resolution of 9 Data Integrity & Calculation Logic Bugs
+
+A comprehensive codebase audit was conducted across the Checkpoint-Native DX application (`lib/checkpoint_dx.py`, `app.py`, `lib/charts.py`, `feature_d.py`, and test suites) to resolve 9 calculation and data-consistency discrepancies without altering visual design or styling.
+
+### 17.1 Bug Fix Itemization & Root Cause Resolutions
+
+| # | Bug / Issue Area | Root Cause | File(s) Modified | Resolution & Guarantee |
+|---|---|---|---|---|
+| **1** | **Conflicting "Overall Score" Calculations** | `get_compliance_dashboard` defaulted to `1.0` when database table was empty, contradicting 2 active gaps; domain bars and gauge were decoupled from active clauses; multi-session bar used static hardcoded values. | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py), [`app.py`](file:///d:/PROject/BengTechEvent26/app.py), [`lib/charts.py`](file:///d:/PROject/BengTechEvent26/lib/charts.py) | `get_compliance_dashboard` accepts `intents_override=intents_data` and weights partial clauses at `0.5`; summary card displays `Clause Verification Rate: 70.0% (3 Met, 1 Partial, 1 Gap)` matching active clauses; gauge displays `Category Domain Conformance` dynamically averaging domain scores; `calculate_multi_session_integrity` bounds aggregate `min(scores) <= agg <= max(scores)`; `render_multi_session_integrity_bar` dynamically plots real sessions. |
+| **2** | **Contradictory SAFE vs. CRITICAL Verdict** | Artificial `if score < 0.6: integrity = 0.915 "Verified via snapshot ledger"` in `app.py:2535` and `checkpoint_dx.py:3609` masked low scores, displaying `[SAFE]` alongside 3 `[CRITICAL]` badges. | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py), [`app.py`](file:///d:/PROject/BengTechEvent26/app.py) | Hardcoded override removed; ANY factor with `status == "[CRITICAL]"` or `impact >= 0.4` escalates status to `[BLOCKED]`; overall score is penalized (0.45); `[SAFE TO RESUME]` is strictly gated on non-critical status. |
+| **3** | **Duplicate Data Entries** | `do_not_retry` and `flagged_gaps` lacked deduplication; `record_integrity_trend` and `detect_integrity_anomalies` inserted alerts unconditionally without checking for open unacknowledged alerts. | [`feature_d.py`](file:///d:/PROject/BengTechEvent26/feature_d.py), [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py) | Deduplicated `do_not_retry` by `(root_cause.lower(), suggested_fix.lower())` and `flagged_gaps` by normalized clause string; queried `integrity_alerts` for existing unacknowledged alert before inserting duplicate alerts. |
+| **4** | **Overconfident Forecast Extrapolations** | Bare linear extrapolation `last_score + slope * 7` clamped runaway positive slopes to flat `100.0%` without confidence qualifiers. | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py) | Added variance-dampened extrapolation `last_score + (slope * 7.0 / (1.0 + 4.0 * variance))`, capped at `0.98` for positive slopes; added confidence qualifiers: `(High confidence)`, `(Improving but volatile)`, `(Sparse baseline)`. |
+| **5** | **Usage Analytics Arithmetic Mismatch** | Floating point scaling and independent fallbacks caused channel counts (156 + 86 + 130 = 372) to contradict `total_loads` (286). | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py) | Strict integer proportional partitioning where `agent_session = total_loads - human_ui_view - api_fetch`, ensuring `sum(consumer_breakdown.values()) == total_loads` (286) always holds. |
+| **6** | **A/B Test Winner Contradicts Displayed Stats** | Supabase test `33333333-...` had Variant A (dev): 20/24 (83.3%) vs Variant B (qa): 19/22 (86.4%) with Winner `[DEV]` at 91% confidence. | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py), [`app.py`](file:///d:/PROject/BengTechEvent26/app.py) | Winner resolution loop in `get_ab_tests` and UI re-evaluates conversion rates `conversions / impressions` and assigns winner to variant with higher rate (qa: 86.4% > 83.3%). |
+| **7** | **Dead/Superseded Requirements in Dropdowns** | Dependency link builder and ripple delay simulator queried raw `reqs` without filtering obsolete requirements. | [`app.py`](file:///d:/PROject/BengTechEvent26/app.py) | Filtered `active_reqs = [r for r in reqs if str(r.get('status', '')).lower() not in ('superseded', 'dead')]` applied to both dropdowns. |
+| **8** | **Form Validation Gaps** | A/B test form allowed `variant_a == variant_b`; cluster merge defaulted both options to `index=0`; compliance violation defaulted to past date `2026-09-15`. | [`app.py`](file:///d:/PROject/BengTechEvent26/app.py) | A/B test validates `ab_va != ab_vb`; cluster merge defaults destination to `index=min(1, len-1)` and blocks self-merge; deadline defaults dynamically to `today + 14 days`. |
+| **9** | **Remediation Action Numbering Gaps** | Recommendations in `diagnose_low_integrity` used hardcoded string templates `[ACTION 1]` through `[ACTION 5]`, causing skips when intermediate factors had 0 impact. | [`lib/checkpoint_dx.py`](file:///d:/PROject/BengTechEvent26/lib/checkpoint_dx.py) | Formatted dynamically as `f"[ACTION {idx+1}] {rec}"` ensuring contiguous `[ACTION 1..N]` sequential numbering without skips. |
+
+### 17.2 Verification Suite Results
+- **Regression Unit Tests**: 7/7 Dedicated Bug Fix Tests PASS (`Ran 7 tests in 16.980s - OK`).
+- **Full 5-Feature Verification**: 5/5 Features Production-Grade [PASS] (`scripts/verify_all_5_features.py`).
+- **UI/UX Design System Compliance**: 9/9 Checks PASS (`verify_ui.py`).
+- **Strict Zero-Emoji Mandate**: 0 emojis across all project files (`check_emojis.py`).
+- **Git Synchronization**: Pushed to `origin/main` ([`fde088b`](https://github.com/yashwanthsoff-cmyk/BengTeck26/commit/fde088b)) with trailer `Entire-Checkpoint: 01M1TWB9RANKAF8EPSTY7JRYE1`.
+
+---
+
+## 18. Section 18: Visual Representations & Graph Upgrades (Data-Storytelling Pass)
+
+Every chart and graph across all five features of the Checkpoint-Native DX dashboard was upgraded from default styles into publication-grade, narrative-driven data visualizations. Every chart now provides clear reference context (safety thresholds, variance envelopes, baseline overlays), direct annotations on key data points, responsive containers adhering to Master UI/UX design tokens (Inter typography, WCAG AA/AAA colors, glass surfaces), and computed one-line key takeaways.
+
+### 18.1 Comprehensive Visual Catalog (22 Visual Representations)
+
+| Feature / Domain | Visualization Component | Chart Type & Mechanics | Data Storytelling & Narrative Value |
+|---|---|---|---|
+| **Feature 5 (Integrity)** | **Flagship Resume Integrity Trajectory** | `render_integrity_trajectory_flagship` (Multi-layer Scatter with H-Rects & Envelopes) | Visualizes 7-day historical integrity and linear forecast with three shaded safety bands (Green &ge;80%, Amber 60-80%, Red &lt;60%), a dashed projection segment, a shaded &plusmn;1&sigma; variance uncertainty envelope, and direct callouts on current checkpoint and projected value. |
+| **Feature 5 (Integrity)** | **Memory Confidence Battery Meter** | `render_memory_confidence_battery` (Horizontal Stacked Bar) | Replaces flat statistics with a battery meter displaying Fresh (>0.80), Medium (0.50-0.80), Marginal (0.30-0.50), and Decayed (<0.30) segments with counts and percentage breakdowns. |
+| **Feature 5 (Integrity)** | **Multi-Session Integrity Overlay** | `render_multi_session_integrity_bar` (Bar Chart + Overlay Reference Line) | Compares cross-session integrity scores with an overlaid dashed reference line representing the Aggregate Multi-Session Baseline and an 80% safe resume threshold line. |
+| **Feature 5 (Integrity)** | **Statistical Anomaly Timeline** | `render_anomaly_alerts_timeline` (Scatter / Strip Timeline) | Displays anomaly spikes across checkpoints with markers colored and sized by severity (`[CRITICAL]`, `[MAJOR]`, `[MINOR]`). |
+| **Feature 3 (Intent)** | **Domain Radial Gauges (Small-Multiples)** | `render_domain_radial_gauges` (Subplots with 5 Circular Indicators) | Grid of 5 mini circular radial indicator gauges (Security, Performance, UI/UX, Functional, Governance) color-coded by compliance threshold (&ge;85% green, 70-85% amber, &lt;70% red). |
+| **Feature 3 (Intent)** | **Domain Conformance Toggle** | Interactive View Toggle in `app.py` | Allows stakeholders to toggle between Small-Multiples Radial Gauges and Ranked Horizontal Bars dynamically. |
+| **Feature 3 (Intent)** | **7-Day Conformance Trajectory** | `render_intent_conformance_trajectory_chart` (Dual Series with Shaded Area) | Replaces flat line charts with a 7-day trajectory chart featuring a shaded forecast confidence band and an 85% target reference line. |
+| **Feature 3 (Intent)** | **Multi-Arc Conformance Gauge** | `render_intent_conformance_gauge` (Arc Gauge with Delta Reference) | Triple-arc threshold gauge (0-70% Red, 70-85% Amber, 85-100% Green) with delta pointer tracking change against prior checkpoint baseline. |
+| **Feature 4 (Contract)** | **Synthesis Weight Radar / Spider** | `render_contract_preset_radar` (Polar Scatterpolar / Grouped Bar) | 4-dimension radar/spider chart comparing Developer, QA Handoff, and PM Review presets across Requirements, Dead-Ends, Intent Gaps, and Integrity Safety, with an interactive view toggle to Grouped Bar. |
+| **Feature 4 (Contract)** | **Transition Funnel with Drop-Off Deltas** | `render_contract_funnel_chart` (Funnel with Transition Callouts) | Funnel displaying 286 total loads across 4 stages, annotated with explicit transition drop-off callouts (`-8.4%`, `-10.3%`, `-7.2%`) and net 76.2% end-to-end completion rate. |
+| **Feature 4 (Contract)** | **Semantic Diff Diverging Bars** | `render_semantic_diff_bars` (Horizontal Diverging Bar) | Visual comparison of contract deltas showing added scope (+3 reqs), resolved dead-ends (-2), addressed gaps (-1), and net integrity gain (+6.5%). |
+| **Feature 4 (Contract)** | **Contract Version Evolution Timeline** | `render_contract_version_timeline` (Connected Milestone Scatter) | Connected horizontal milestone timeline mapping contract progression from v1.0 (Baseline) to v2.0 (Signed Handoff) and v3.0-rc (Candidate). |
+| **Feature 2 (Requirements)** | **Sprint Burndown Variance Envelope** | `render_sprint_burndown_variance_chart` (Line & Area Envelope) | Ideal burndown vs actual burndown with a shaded variance envelope (green fill when ahead of schedule) and direct callout annotation (`Ahead of Pace: -0.5 pts`). |
+| **Feature 2 (Requirements)** | **Priority vs Effort Scatter** | `render_priority_vs_effort_scatter` (Bubble Scatter with Callouts) | Story point sized bubbles colored by tier (P0, P1, P2) with direct labeled callout annotations on the top 2 highest priority items (`OAuth2 Token Expiry`, `TOTP Multi-Factor`). |
+| **Feature 2 (Requirements)** | **100% Stacked Lifecycle Progress Bar** | `render_requirement_lifecycle_stacked_bar` (Horizontal Stacked Bar) | Single horizontal progress bar displaying distribution across all 5 statuses (Ready, In Progress, Blocked, Done, Superseded) with counts. |
+| **Feature 2 (Requirements)** | **Requirement Aging & Stale Risk Monitor** | `render_requirement_aging_heatmap` (Bar / Strip with Stale Threshold) | Monitors days in current status for requirements with an overlaid 14-day stale warning threshold line. |
+| **Feature 1 (Dead-Ends)** | **Fix Success Rate Hero Arc Gauge** | `render_fix_success_gauge` (Arc Gauge with 75% Target Line) | Hero radial/arc gauge displaying fix recovery rate (66.7%) with a prominent green reference threshold line at the 75% target. |
+| **Feature 1 (Dead-Ends)** | **Ranked Root Causes with Trend Vectors** | `render_root_cause_ranked_bar` (Horizontal Ranked Bar) | Sorted root causes with trend vector badges (`[+2]`, `[0]`, `[-1]`) indicating worsening, stable, or improving frequency across checkpoints. |
+| **Feature 1 (Dead-Ends)** | **Un-Overlapped Severity Distribution** | `render_severity_distribution_bar` (Stacked Bar with Clean Margins) | Stacked bar layout preventing overlapping x-axis labels across failure types on all viewport widths. |
+| **Feature 1 (Dead-Ends)** | **Dead-End Density Timeline Strip** | `render_dead_end_timeline_strip` (Area & Marker Sparkline) | Time-series density strip illustrating dead-end frequency across checkpoints (chk-001 through chk-005). |
+| **Cross-Cutting** | **Inline SVG Metric Sparklines** | `render_metric_sparkline_svg` (Responsive Inline SVG String) | Ultra-lightweight inline `<svg>` polyline and endpoint dot embedded directly inside primary KPI metric cards for instant trajectory context. |
+| **Cross-Cutting** | **Zero-Emoji Trend Chips** | `render_trend_chip_html` (HTML Pill Badge with `&uarr;` / `&darr;` / `&rarr;`) | Color-coded trend chip pills indicating direction and magnitude vs threshold without any unicode emojis. |
+| **Cross-Cutting** | **Universal Empty Chart State** | `render_empty_chart_state` (Plotly Figure with Dashed Frame) | Refined placeholder figure with centered title and status message for zero/insufficient data states. |
+
+---
+
+### 18.2 Verification Suite Results
+
+```powershell
+# 1. Visualization Unit Test Suite (21 Tests)
+python -m unittest tests/test_charts.py
+# Result: Ran 21 tests in 1.203s - OK
+
+# 2. Master UI/UX Design System Compliance (9/9 Checks)
+python verify_ui.py
+# Result: 9/9 checks passed - style.css size: 26,990 bytes (13,000-28,000 bounds maintained)
+
+# 3. 5-Feature Production Verification
+python scripts/verify_all_5_features.py
+# Result: 5/5 Features Production Grade [PASS]
+
+# 4. Zero-Emoji Compliance Audit
+python scratch/check_emojis.py
+# Result: SUCCESS: 0 emojis found across all codebase files! 100% compliant.
+
+# 5. Live Streamlit Server Verification
+# Result: HTTP Status 200 OK on http://localhost:8501
+```
+
+### 18.3 Git Synchronization
+
+- **Commit**: `e0baeda`
+- **Commit Message**: `feat(visuals): upgrade all 5 feature graphs with data-storytelling pass`
+- **Trailer**: `Entire-Checkpoint: 01M1TWB9RANKAF8EPSTY7JRYE1`
+- **Remote**: Pushed and synchronized cleanly to `origin/main` on GitHub.
