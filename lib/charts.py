@@ -1527,9 +1527,25 @@ def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None)
     return _apply_layout_defaults(fig, "Agent Memory Confidence Battery Meter", height=160)
 
 
-def render_memory_confidence_donut(bins_data: Optional[Dict[str, int]] = None, avg_conf: float = 0.852) -> go.Figure:
+def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: float = 0.852) -> go.Figure:
     """Agent Memory Confidence Donut with central average confidence."""
-    if not bins_data:
+    if isinstance(bins_data, list):
+        binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
+        total_conf = 0.0
+        for m in bins_data:
+            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            total_conf += c
+            if c >= 0.8:
+                binned["Fresh (>0.8)"] += 1
+            elif c >= 0.5:
+                binned["Medium (0.5-0.8)"] += 1
+            elif c >= 0.3:
+                binned["Marginal (0.3-0.5)"] += 1
+            else:
+                binned["Decayed (<0.3)"] += 1
+        avg_conf = (total_conf / len(bins_data)) if bins_data else avg_conf
+        bins_data = binned
+    elif not bins_data or not isinstance(bins_data, dict):
         bins_data = {
             "Fresh (>0.8)": 7,
             "Medium (0.5-0.8)": 2,
@@ -1552,9 +1568,22 @@ def render_memory_confidence_donut(bins_data: Optional[Dict[str, int]] = None, a
     )
 
 
-def render_memory_ranked_list(bins_data: Optional[Dict[str, int]] = None) -> str:
+def render_memory_ranked_list(bins_data: Optional[Any] = None) -> str:
     """Ranked leaderboard list paired beside Memory Confidence Donut."""
-    if not bins_data:
+    if isinstance(bins_data, list):
+        binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
+        for m in bins_data:
+            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            if c >= 0.8:
+                binned["Fresh (>0.8)"] += 1
+            elif c >= 0.5:
+                binned["Medium (0.5-0.8)"] += 1
+            elif c >= 0.3:
+                binned["Marginal (0.3-0.5)"] += 1
+            else:
+                binned["Decayed (<0.3)"] += 1
+        bins_data = binned
+    elif not bins_data or not isinstance(bins_data, dict):
         bins_data = {
             "Fresh (>0.8)": 7,
             "Medium (0.5-0.8)": 2,
@@ -1581,6 +1610,7 @@ def render_memory_ranked_list(bins_data: Optional[Dict[str, int]] = None) -> str
             "color": colors[i % len(colors)],
         })
     return render_ranked_list_html(items, title="Memory Tier Breakdown")
+
 
 
 def render_multi_session_integrity_bar(session_scores: Optional[Dict[str, Any]] = None, aggregate_score: Optional[float] = None) -> go.Figure:

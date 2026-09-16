@@ -221,17 +221,18 @@ div[data-testid="stMarkdownContainer"] > div:empty {
    4. BUTTONS - EXPLICIT HIGH CONTRAST (SOLVES BLACK-ON-BLACK BUG)
    -------------------------------------------------------------------------- */
 .stButton > button,
+.stDownloadButton > button,
 button[kind="primary"],
 button[kind="secondary"] {
   background: var(--bg-inverse) !important;
-  color: var(--text-inverse) !important;
+  color: #FFFFFF !important;
   border-radius: var(--radius-pill) !important;
-  padding: 14px 28px !important;
-  font-size: 15px !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
   font-family: var(--font-primary) !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   letter-spacing: -0.01em !important;
-  border: 1px solid transparent !important;
+  border: 1px solid #334155 !important;
   cursor: pointer !important;
   box-shadow: var(--shadow-glass) !important;
   transition: transform 0.3s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.2, 1, 0.3, 1) !important;
@@ -243,20 +244,40 @@ button[kind="secondary"] {
 .stButton > button *,
 .stButton > button p,
 .stButton > button span,
-.stButton > button div {
-  color: var(--text-inverse) !important;
-  font-weight: 500 !important;
+.stButton > button div,
+.stDownloadButton > button *,
+.stDownloadButton > button p,
+.stDownloadButton > button span,
+.stDownloadButton > button div,
+button[kind="primary"] *,
+button[kind="secondary"] *,
+button[kind="primary"] p,
+button[kind="secondary"] p,
+button[kind="primary"] span,
+button[kind="secondary"] span,
+button[kind="primary"] div,
+button[kind="secondary"] div {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
+  font-weight: 600 !important;
 }
 
-.stButton > button:hover {
-  background: var(--bg-inverse) !important;
-  color: var(--text-inverse) !important;
+.stButton > button:hover,
+.stDownloadButton > button:hover,
+button[kind="primary"]:hover,
+button[kind="secondary"]:hover {
+  background: #1E293B !important;
+  color: #FFFFFF !important;
   transform: scale(1.02) !important;
 }
 
-.stButton > button:hover * {
-  color: var(--text-inverse) !important;
+.stButton > button:hover *,
+.stDownloadButton > button:hover *,
+button[kind="primary"]:hover *,
+button[kind="secondary"]:hover * {
+  color: #FFFFFF !important;
 }
+
 
 .stButton > button:active {
   transform: scale(0.97) !important;
@@ -502,22 +523,22 @@ div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
    7. FLOATING PILL NAVBAR
    -------------------------------------------------------------------------- */
 .nav-capsule {
-  position: fixed !important;
-  top: var(--space-16) !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  z-index: var(--z-sticky-header) !important;
+  position: static !important;
+  margin: 0 auto var(--space-20) auto !important;
+  width: fit-content !important;
+  z-index: 10 !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  background: rgba(253, 253, 253, 0.85) !important;
+  background: rgba(253, 253, 253, 0.95) !important;
   border: 1px solid var(--border-dim) !important;
   border-radius: var(--radius-pill) !important;
   padding: var(--space-8) var(--space-24) !important;
   display: flex !important;
   gap: var(--space-24) !important;
   align-items: center !important;
-  box-shadow: var(--shadow-glass) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
+
 
 .nav-capsule a {
   color: var(--text-primary) !important;
@@ -743,11 +764,12 @@ div[data-testid="stMetricValue"] {
   opacity: 1 !important;
 }
 
-.stButton > button {
+.stButton > button,
+.stDownloadButton > button {
   white-space: normal !important;
   word-break: break-word !important;
   min-height: 2.4rem !important;
-  padding: 0.45rem 1rem !important;
+  padding: 0.45rem 1.2rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   background-color: #0f172a !important;
@@ -756,11 +778,19 @@ div[data-testid="stMetricValue"] {
   border-radius: var(--radius-pill) !important;
 }
 
-.stButton > button:hover {
+.stButton > button *,
+.stDownloadButton > button * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.stButton > button:hover,
+.stDownloadButton > button:hover {
   background-color: #1e293b !important;
   color: #ffffff !important;
   border-color: #475569 !important;
 }
+
 
 /* Chrome Suppression */
 #MainMenu { visibility: hidden !important; display: none !important; }

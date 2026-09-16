@@ -39,7 +39,7 @@ st.markdown("""
   header[data-testid="stHeader"] { visibility: hidden; height: 0 !important; }
   footer { visibility: hidden; }
 </style>
-<div class="nav-capsule" style="position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(253,253,253,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(15,16,18,0.12);border-radius:40px;padding:8px 24px;display:flex;gap:20px;box-shadow:0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);">
+<div class="nav-capsule" style="margin:0 auto 20px auto;width:fit-content;display:flex;background:rgba(253,253,253,0.92);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(15,16,18,0.12);border-radius:40px;padding:8px 24px;gap:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
   <a href="#panel-a" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">01 Dead-End Registry</a>
   <span style="color:#CBD5E1;">·</span>
   <a href="#panel-b" style="color:#0F1012;text-decoration:none;font-weight:500;font-size:12.5px;letter-spacing:-0.01em;">02 Requirement Ledger</a>
