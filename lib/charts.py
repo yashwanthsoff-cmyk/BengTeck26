@@ -609,8 +609,9 @@ def render_dead_end_horizontal_bars(dead_ends: Optional[List[Dict]] = None) -> g
     if not counts:
         counts = {"Logic Error": 2, "Timeout": 1, "Resource Exhaustion": 1, "Schema Mismatch": 1}
 
-    types = list(counts.keys())
-    values = [counts[t] for t in types]
+    sorted_items = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    types = [item[0] for item in sorted_items]
+    values = [item[1] for item in sorted_items]
     total = sum(values) or 1
     palette = [COLORS["danger"], COLORS["warning"], COLORS["primary"], COLORS["neutral"]]
 
@@ -651,8 +652,9 @@ def render_dead_end_ranked_list(dead_ends: Optional[List[Dict]] = None) -> str:
         "Schema Mismatch": "Missing telemetry schema version",
     }
 
+    sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
     items = []
-    for i, (k, v) in enumerate(counts.items()):
+    for i, (k, v) in enumerate(sorted_counts):
         items.append({
             "rank": i + 1,
             "label": k,
@@ -686,7 +688,7 @@ def render_root_cause_ranked_bar(dead_ends: Optional[List[Dict]] = None) -> go.F
         for idx, (rc, cnt) in enumerate(sorted_rc):
             delta = sim_deltas[idx % len(sim_deltas)]
             trend = "worsening" if delta > 0 else ("improving" if delta < 0 else "stable")
-            clean_rc = (rc[:28] + "..") if len(rc) > 30 else rc
+            clean_rc = (rc[:38] + "..") if len(rc) > 40 else rc
             items.append({
                 "Root Cause": f"{clean_rc} {format_delta_label(delta)}",
                 "Incidents": cnt,
@@ -718,7 +720,7 @@ def render_root_cause_ranked_bar(dead_ends: Optional[List[Dict]] = None) -> go.F
     fig.update_xaxes(title_text="Incident Occurrences", showgrid=True, automargin=True)
     fig.update_yaxes(autorange="reversed", automargin=True)
     fig = _apply_layout_defaults(fig, "Ranked Failure Root Causes with Checkpoint Trend Vectors", height=280)
-    fig.update_layout(margin=dict(l=10, r=24, t=44, b=42))
+    fig.update_layout(margin=dict(l=220, r=24, t=44, b=42))
     return fig
 
 
@@ -1001,11 +1003,21 @@ def render_sprint_burndown_chart() -> go.Figure:
     return render_sprint_burndown_variance_chart()
 
 
-def render_sprint_burndown_variance_chart() -> go.Figure:
+def get_sprint_burndown_variance(burndown_data: Optional[Dict[str, Any]] = None, current_day_idx: int = 6) -> float:
+    """Calculates actual vs. ideal burndown pace variance directly from the burndown series."""
+    ideal = (burndown_data.get("ideal") if isinstance(burndown_data, dict) else None) or [25.0, 22.5, 20.0, 17.5, 15.0, 12.5, 10.0, 7.5, 5.0, 0.0]
+    actual = (burndown_data.get("actual") if isinstance(burndown_data, dict) else None) or [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]
+    idx = min(current_day_idx, len(ideal) - 1, len(actual) - 1)
+    return round(float(actual[idx] - ideal[idx]), 1)
+
+
+def render_sprint_burndown_variance_chart(burndown_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Annotated Line Chart: actual burndown gets subtle gradient fill, ideal is dashed reference line with inline label."""
-    days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10"]
-    ideal = [25.0, 22.5, 20.0, 17.5, 15.0, 12.5, 10.0, 7.5, 5.0, 0.0]
-    actual = [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]
+    days = (burndown_data.get("days") if isinstance(burndown_data, dict) else None) or ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10"]
+    ideal = (burndown_data.get("ideal") if isinstance(burndown_data, dict) else None) or [25.0, 22.5, 20.0, 17.5, 15.0, 12.5, 10.0, 7.5, 5.0, 0.0]
+    actual = (burndown_data.get("actual") if isinstance(burndown_data, dict) else None) or [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]
+    pace_variance = get_sprint_burndown_variance(burndown_data, current_day_idx=6)
+    pace_str = "Ahead of Pace" if pace_variance <= 0 else "Behind Pace"
 
     fig = go.Figure()
 
@@ -1035,8 +1047,8 @@ def render_sprint_burndown_variance_chart() -> go.Figure:
 
     # Inline label directly on ideal line
     fig.add_annotation(
-        x="Day 4",
-        y=17.5,
+        x="Day 4" if len(days) > 3 else days[0],
+        y=ideal[3] if len(ideal) > 3 else ideal[0],
         text="Ideal Pace",
         showarrow=False,
         font=dict(family=FONT_FAMILY, size=10, color=COLORS["neutral"]),
@@ -1044,18 +1056,23 @@ def render_sprint_burndown_variance_chart() -> go.Figure:
     )
 
     # Pace Callout Annotation on Current Point
+    curr_day = days[6] if len(days) > 6 else days[-1]
+    curr_actual = actual[6] if len(actual) > 6 else actual[-1]
+    callout_color = COLORS["success"] if pace_variance <= 0 else COLORS["danger"]
+    callout_bg = "#DCFCE7" if pace_variance <= 0 else "#FEE2E2"
+
     fig.add_annotation(
-        x="Day 7",
-        y=9.5,
-        text="<b>Ahead of Pace: -0.5 pts</b>",
+        x=curr_day,
+        y=curr_actual,
+        text=f"<b>{pace_str}: {pace_variance:+.1f} pts</b>",
         showarrow=True,
         arrowhead=2,
         ax=0,
         ay=-36,
-        bgcolor="#DCFCE7",
-        bordercolor=COLORS["success"],
+        bgcolor=callout_bg,
+        bordercolor=callout_color,
         borderwidth=1.5,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["success"]),
+        font=dict(family=FONT_FAMILY, size=10, color=callout_color),
     )
 
     fig.update_xaxes(showgrid=True)
@@ -1410,6 +1427,41 @@ def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, A
             "forecast": [82.0, 83.5, 85.0, 86.2],
             "forecast_dates": ["Sep 16", "Sep 17", "Sep 18", "Sep 19"],
         }
+    elif isinstance(trends_data, dict) and "history" in trends_data and trends_data.get("history"):
+        hist = trends_data.get("history", [])
+        raw_dates = [str(h.get("recorded_at", ""))[:10] for h in hist]
+        dates = []
+        for d in raw_dates:
+            try:
+                from datetime import datetime
+                dates.append(datetime.fromisoformat(d).strftime("%b %d"))
+            except Exception:
+                dates.append(d or "Past")
+        actual = [round(float(h.get("overall_score", 0.85)) * 100.0, 1) for h in hist]
+        f_7d = round(float(trends_data.get("forecast_7d", 0.90)) * 100.0, 1)
+        latest = actual[-1] if actual else 85.0
+        f_vals = [
+            round(latest + (f_7d - latest) * (i / 3.0), 1)
+            for i in range(4)
+        ]
+        last_dt = None
+        if raw_dates and len(raw_dates[-1]) >= 10:
+            try:
+                from datetime import datetime
+                last_dt = datetime.fromisoformat(raw_dates[-1])
+            except Exception:
+                pass
+        if not last_dt:
+            from datetime import datetime
+            last_dt = datetime.now()
+        from datetime import timedelta
+        f_dates = [(last_dt + timedelta(days=i * 2)).strftime("%b %d") for i in range(4)]
+        trends_data = {
+            "dates": dates,
+            "actual": actual,
+            "forecast": f_vals,
+            "forecast_dates": f_dates,
+        }
 
     dates = trends_data.get("dates", ["Sep 10", "Sep 11", "Sep 12", "Sep 13", "Sep 14", "Sep 15", "Sep 16"])
     actual = trends_data.get("actual", [76.0, 78.5, 80.0, 81.5, 82.0, 82.0, 82.0])
@@ -1473,17 +1525,20 @@ def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, A
 
 def render_intent_status_donut(intents_data: Optional[List[Dict]] = None) -> go.Figure:
     """Clause Conformance Distribution Donut."""
-    status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
-    for i in (intents_data or []):
-        st = str(i.get("implementation_status") or "").lower()
-        if st == "fully_met":
-            status_counts["Fully Met"] += 1
-        elif st == "met":
-            status_counts["Met"] += 1
-        elif st in ("partially_met", "partial"):
-            status_counts["Partially Met"] += 1
-        elif st in ("gap", "not_met"):
-            status_counts["Gap"] += 1
+    if intents_data:
+        status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
+        for i in intents_data:
+            st = str(i.get("implementation_status") or "").lower()
+            if st == "fully_met":
+                status_counts["Fully Met"] += 1
+            elif st == "met":
+                status_counts["Met"] += 1
+            elif st in ("partially_met", "partial"):
+                status_counts["Partially Met"] += 1
+            elif st in ("gap", "not_met"):
+                status_counts["Gap"] += 1
+    else:
+        status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
 
     labels = list(status_counts.keys())
     values = list(status_counts.values())
@@ -1508,17 +1563,20 @@ render_clause_distribution_donut = render_intent_status_donut
 
 def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
     """Ranked leaderboard list paired beside Clause Conformance Donut with taxonomy definitions."""
-    status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
-    for i in (intents_data or []):
-        st = str(i.get("implementation_status") or "").lower()
-        if st == "fully_met":
-            status_counts["Fully Met"] += 1
-        elif st == "met":
-            status_counts["Met"] += 1
-        elif st in ("partially_met", "partial"):
-            status_counts["Partially Met"] += 1
-        elif st in ("gap", "not_met"):
-            status_counts["Gap"] += 1
+    if intents_data:
+        status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
+        for i in intents_data:
+            st = str(i.get("implementation_status") or "").lower()
+            if st == "fully_met":
+                status_counts["Fully Met"] += 1
+            elif st == "met":
+                status_counts["Met"] += 1
+            elif st in ("partially_met", "partial"):
+                status_counts["Partially Met"] += 1
+            elif st in ("gap", "not_met"):
+                status_counts["Gap"] += 1
+    else:
+        status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
 
     total = sum(status_counts.values()) or 1
     color_palette = [COLORS["success"], "#34D399", COLORS["warning"], COLORS["danger"]]
@@ -1528,8 +1586,9 @@ def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
         "Partially Met": "Partial diff; edge cases remaining",
         "Gap": "Unimplemented clause requirement",
     }
+    sorted_status = sorted(status_counts.items(), key=lambda x: x[1], reverse=True)
     items = []
-    for i, (k, v) in enumerate(status_counts.items()):
+    for i, (k, v) in enumerate(sorted_status):
         items.append({
             "rank": i + 1,
             "label": k,
@@ -1545,10 +1604,16 @@ def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
 # FEATURE D: AGENT RESUME CONTRACT VISUALIZATIONS
 # ==============================================================================
 
-def render_contract_funnel_chart() -> go.Figure:
+def render_contract_funnel_chart(funnel_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Contract Consumption Funnel with explicit percentage-delta annotations."""
     stages = ["Contract Created", "Schema Validated", "Agent Consumed", "Resumption Succeeded"]
     counts = [286, 262, 235, 218]
+
+    if funnel_data and isinstance(funnel_data, dict) and "steps" in funnel_data:
+        steps = funnel_data.get("steps") or []
+        if len(steps) >= 2:
+            stages = [str(s.get("step")) for s in steps]
+            counts = [int(s.get("count", 0)) for s in steps]
 
     fig = go.Figure(
         go.Funnel(
@@ -1562,48 +1627,60 @@ def render_contract_funnel_chart() -> go.Figure:
         )
     )
 
-    # Explicit stage drop-off delta annotations
-    fig.add_annotation(
-        x=274,
-        y=0.5,
-        text="<b>-8.4% drop-off</b> (24 schema errors)",
-        showarrow=True,
-        arrowhead=1,
-        ax=90,
-        ay=0,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
-        bgcolor="#FEE2E2",
-        bordercolor="#FCA5A5",
-        borderwidth=1,
-    )
-    fig.add_annotation(
-        x=248,
-        y=1.5,
-        text="<b>-10.3% drop-off</b> (27 timeout/reconnect)",
-        showarrow=True,
-        arrowhead=1,
-        ax=90,
-        ay=0,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["warning"]),
-        bgcolor="#FEF9C3",
-        bordercolor="#FDE047",
-        borderwidth=1,
-    )
-    fig.add_annotation(
-        x=226,
-        y=2.5,
-        text="<b>-7.2% drop-off</b> (17 state conflicts)",
-        showarrow=True,
-        arrowhead=1,
-        ax=90,
-        ay=0,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
-        bgcolor="#FEE2E2",
-        bordercolor="#FCA5A5",
-        borderwidth=1,
-    )
+    # Dynamic stage drop-off delta annotations
+    if len(counts) >= 4 and counts[0] > 0:
+        d1 = counts[0] - counts[1]
+        p1 = round(d1 / counts[0] * 100, 1)
+        d2 = counts[1] - counts[2]
+        p2 = round(d2 / counts[0] * 100, 1)
+        d3 = counts[2] - counts[3]
+        p3 = round(d3 / counts[0] * 100, 1)
+        net_pct = round(counts[-1] / counts[0] * 100, 1)
 
-    return _apply_layout_defaults(fig, "Contract Consumption Funnel with Stage Drop-Off Deltas (76.2% Net Success)", height=330)
+        fig.add_annotation(
+            x=(counts[0] + counts[1]) / 2,
+            y=0.5,
+            text=f"<b>-{p1}% drop-off</b> ({d1} schema errors)",
+            showarrow=True,
+            arrowhead=1,
+            ax=90,
+            ay=0,
+            font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
+            bgcolor="#FEE2E2",
+            bordercolor="#FCA5A5",
+            borderwidth=1,
+        )
+        fig.add_annotation(
+            x=(counts[1] + counts[2]) / 2,
+            y=1.5,
+            text=f"<b>-{p2}% drop-off</b> ({d2} timeout/reconnect)",
+            showarrow=True,
+            arrowhead=1,
+            ax=90,
+            ay=0,
+            font=dict(family=FONT_FAMILY, size=10, color=COLORS["warning"]),
+            bgcolor="#FEF9C3",
+            bordercolor="#FDE047",
+            borderwidth=1,
+        )
+        fig.add_annotation(
+            x=(counts[2] + counts[3]) / 2,
+            y=2.5,
+            text=f"<b>-{p3}% drop-off</b> ({d3} state conflicts)",
+            showarrow=True,
+            arrowhead=1,
+            ax=90,
+            ay=0,
+            font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
+            bgcolor="#FEE2E2",
+            bordercolor="#FCA5A5",
+            borderwidth=1,
+        )
+        title_str = f"Contract Consumption Funnel with Stage Drop-Off Deltas ({net_pct}% Net Success)"
+    else:
+        title_str = "Contract Consumption Funnel with Stage Drop-Off Deltas (76.2% Net Success)"
+
+    return _apply_layout_defaults(fig, title_str, height=330)
 
 
 def render_contract_engagement_heatmap() -> go.Figure:
@@ -1760,10 +1837,22 @@ def render_contract_version_timeline(versions: Optional[List[Dict[str, Any]]] = 
     return _apply_layout_defaults(fig, "Contract Version Evolution Timeline", height=260)
 
 
+def _normalize_consumer_channel_data(cb_data: Optional[Dict[str, int]] = None) -> Dict[str, int]:
+    """Normalize consumer channel keys to human-readable labels."""
+    if not cb_data:
+        return {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+    channel_map = {
+        "human_ui_view": "Human UI Views",
+        "api_fetch": "API Fetch",
+        "agent_session": "Autonomous Agents",
+        "agent_sessions": "Autonomous Agents",
+    }
+    return {channel_map.get(k, str(k).replace("_", " ").title()): v for k, v in cb_data.items()}
+
+
 def render_consumer_channel_donut(cb_data: Optional[Dict[str, int]] = None) -> go.Figure:
     """Consumer Channel Breakdown Donut with central total loads."""
-    if not cb_data:
-        cb_data = {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+    cb_data = _normalize_consumer_channel_data(cb_data)
 
     labels = list(cb_data.keys())
     values = list(cb_data.values())
@@ -1783,8 +1872,7 @@ def render_consumer_channel_donut(cb_data: Optional[Dict[str, int]] = None) -> g
 
 def render_consumer_channel_horizontal_bars(cb_data: Optional[Dict[str, int]] = None) -> go.Figure:
     """Ranked horizontal bars for Consumer Channel Breakdown (Presentation Mode)."""
-    if not cb_data:
-        cb_data = {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+    cb_data = _normalize_consumer_channel_data(cb_data)
 
     labels = list(cb_data.keys())
     values = list(cb_data.values())
@@ -1810,8 +1898,7 @@ def render_consumer_channel_horizontal_bars(cb_data: Optional[Dict[str, int]] = 
 
 def render_consumer_channel_radar(cb_data: Optional[Dict[str, int]] = None) -> go.Figure:
     """Radar / Spider chart for Consumer Channel Breakdown (Presentation Mode)."""
-    if not cb_data:
-        cb_data = {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+    cb_data = _normalize_consumer_channel_data(cb_data)
 
     categories = list(cb_data.keys())
     values = list(cb_data.values())
@@ -1842,13 +1929,13 @@ def render_consumer_channel_radar(cb_data: Optional[Dict[str, int]] = None) -> g
 
 def render_consumer_channel_ranked_list(cb_data: Optional[Dict[str, int]] = None) -> str:
     """Ranked leaderboard list paired beside Consumer Channel Donut."""
-    if not cb_data:
-        cb_data = {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
+    cb_data = _normalize_consumer_channel_data(cb_data)
 
     total = sum(cb_data.values()) or 1
     colors = [COLORS["primary"], "#2563EB", "#0D9488"]
+    sorted_channels = sorted(cb_data.items(), key=lambda x: x[1], reverse=True)
     items = []
-    for i, (k, v) in enumerate(cb_data.items()):
+    for i, (k, v) in enumerate(sorted_channels):
         items.append({
             "rank": i + 1,
             "label": k,
@@ -1920,9 +2007,20 @@ def render_integrity_trajectory_flagship(trend_res: Optional[Dict[str, Any]] = N
     else:
         x_labels = []
         y_scores = []
+        seen_dates = {}
         for i, h in enumerate(hist):
             rec = str(h.get("recorded_at") or f"pt-{i}")
-            label = rec[:10] if len(rec) > 10 else rec
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(rec.replace("Z", "+00:00"))
+                base_label = dt.strftime("%b %d")
+            except Exception:
+                base_label = rec[:10] if len(rec) > 10 else rec
+            seen_dates[base_label] = seen_dates.get(base_label, 0) + 1
+            if seen_dates[base_label] > 1:
+                label = f"{base_label} (#{seen_dates[base_label]})"
+            else:
+                label = base_label
             x_labels.append(label)
             sc = float(h.get("integrity_score") or 0.85)
             y_scores.append(sc * 100.0 if sc <= 1.0 else sc)
@@ -2075,12 +2173,13 @@ def render_integrity_trajectory_flagship(trend_res: Optional[Dict[str, Any]] = N
             borderwidth=1,
         )
 
-    fig.update_xaxes(showgrid=True)
+    fig = _apply_layout_defaults(fig, "Flagship 7-Day Resume Integrity Trajectory & Forecast", height=350)
+    fig.update_xaxes(type="category", showgrid=True)
     fig.update_yaxes(title_text="Integrity Score (%)", range=[50, 105], showgrid=True)
     fig.update_layout(
         legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5, font=dict(size=11)),
     )
-    return _apply_layout_defaults(fig, "Flagship 7-Day Resume Integrity Trajectory & Forecast", height=350)
+    return fig
 
 
 def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None) -> go.Figure:
@@ -2141,7 +2240,7 @@ def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: fl
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         total_conf = 0.0
         for m in bins_data:
-            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
             total_conf += c
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
@@ -2181,7 +2280,7 @@ def render_memory_radial_gauges(bins_data: Optional[Any] = None) -> go.Figure:
     if isinstance(bins_data, list):
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2235,7 +2334,7 @@ def render_memory_horizontal_bars(bins_data: Optional[Any] = None) -> go.Figure:
     if isinstance(bins_data, list):
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2276,7 +2375,7 @@ def render_memory_ranked_list(bins_data: Optional[Any] = None) -> str:
     if isinstance(bins_data, list):
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2303,8 +2402,9 @@ def render_memory_ranked_list(bins_data: Optional[Any] = None) -> str:
         "Decayed (<0.3)": "Candidate for TTL automated purging",
     }
 
+    sorted_bins = sorted(bins_data.items(), key=lambda x: x[1], reverse=True)
     items = []
-    for i, (k, v) in enumerate(bins_data.items()):
+    for i, (k, v) in enumerate(sorted_bins):
         items.append({
             "rank": i + 1,
             "label": k,

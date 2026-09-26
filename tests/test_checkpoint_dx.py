@@ -2144,6 +2144,127 @@ class TestCheckpointDX(unittest.TestCase):
             for idx, act in enumerate(actions):
                 self.assertTrue(act.startswith(f"[ACTION {idx+1}]"))
 
+    def test_export_contract_pdf(self):
+        """Feature D: Verify pure-Python PDF generation of Resume Contracts."""
+        dx = CheckpointDX()
+        mock_contract = {
+            "generated_at": "2026-09-18T00:00:00Z",
+            "integrity_check": {"integrity_score": 0.85},
+            "unresolved_requirements": [
+                {"text": f"Requirement {i}", "status": "in_progress", "priority": 1}
+                for i in range(12)
+            ],
+            "do_not_retry": [
+                {"reason_abandoned": "Lock deadlock under concurrency", "suggested_alternative": "Redis distributed lock"},
+            ],
+            "flagged_gaps": [{"clause": "Clock-skew tolerance"}],
+        }
+        pdf_bytes = dx.export_contract_pdf(mock_contract, checkpoint_id="chk-test-01", version=2, template="qa")
+        self.assertIsInstance(pdf_bytes, bytes)
+        self.assertTrue(pdf_bytes.startswith(b"%PDF-1.4"))
+        self.assertTrue(pdf_bytes.endswith(b"%%EOF\n"))
+        self.assertIn(b"/Helvetica", pdf_bytes)
+        self.assertIn(b"Resume Contract v2", pdf_bytes)
+        self.assertIn(b"Integrity Score: 85% \\(PASS\\)", pdf_bytes)
+        self.assertIn(b"--- Flagged Gaps ---", pdf_bytes)
+        self.assertIn(b"Clock-skew tolerance", pdf_bytes)
+        self.assertIn(b"... and 2 more unresolved items", pdf_bytes)
+
+
+    def test_defect_c1_get_intent_conformance_table(self):
+        """Defect C.1: Verify get_intent_conformance queries intent_summaries table in Supabase."""
+        dx = CheckpointDX()
+        with patch.object(dx.supabase, "table") as mock_table, \
+             patch.object(dx, "get_checkpoint", return_value={"id": "00000000-0000-0000-0000-000000000001", "checkpoint_id": "chk-001"}):
+            mock_table.return_value.select.return_value.or_.return_value.execute.return_value.data = [
+                {"id": "int-1", "intent_text": "Verify OAuth2", "implementation_status": "met"}
+            ]
+            res = dx.get_intent_conformance("chk-001")
+            self.assertEqual(len(res), 1)
+            mock_table.assert_called_with("intent_summaries")
+
+    def test_defect_b1_add_requirements_effort_points(self):
+        """Defect B.1: Verify add_requirements accepts and persists effort_points."""
+        dx = CheckpointDX()
+        with patch.object(dx, "get_checkpoint", return_value={"id": "00000000-0000-0000-0000-000000000001", "session_id": "sess-1"}), \
+             patch.object(dx.supabase, "table") as mock_table, \
+             patch.object(dx, "_run_sql") as mock_sql, \
+             patch.object(dx, "store_in_agent_memory"), \
+             patch.object(dx, "enrich_requirement"):
+            mock_table.return_value.insert.return_value.execute.return_value.data = [{"id": "req-1", "effort_points": 5}]
+            inserted = dx.add_requirements("chk-001", ["Build auth workflow"], effort_points=5)
+            self.assertEqual(len(inserted), 1)
+            insert_call = mock_table.return_value.insert.call_args[0][0]
+            self.assertEqual(insert_call.get("effort_points"), 5)
+            self.assertTrue(mock_sql.called)
+            sql_params = mock_sql.call_args[1].get("parameters", [])
+            eff_param = next((p for p in sql_params if p["name"] == "effort_points"), None)
+            self.assertIsNotNone(eff_param)
+            self.assertEqual(eff_param["value"], "5")
+
+    def test_defect_a1_merge_clusters_delta_sync(self):
+        """Defect A.1: Verify merge_clusters propagates cluster updates to Delta fallback table."""
+        dx = CheckpointDX()
+        mock_clusters = [
+            {"id": "c-src", "cluster_key": "cluster-old", "member_count": 2},
+            {"id": "c-tgt", "cluster_key": "cluster-target", "member_count": 3},
+        ]
+        with patch.object(dx, "get_dead_end_clusters", return_value=mock_clusters), \
+             patch.object(dx.supabase, "table") as mock_table, \
+             patch.object(dx, "_run_sql") as mock_sql:
+            mock_table.return_value.update.return_value.eq.return_value.execute.return_value.data = [{"id": "c-tgt"}]
+            res = dx.merge_clusters("cluster-old", "cluster-target")
+            self.assertTrue(res.get("success"))
+            mock_sql.assert_called_once()
+            sql_statement = mock_sql.call_args[0][0]
+            self.assertIn("UPDATE", sql_statement)
+            self.assertIn("dead_end_traces_fallback", sql_statement)
+            self.assertIn("cluster_key = :tgt_key", sql_statement)
+
+    def test_defect_e2_check_resume_integrity_uuid_resolution(self):
+        """Defect E.2: Verify check_resume_integrity resolves string checkpoint ID to UUID for requirements."""
+        dx = CheckpointDX()
+        mock_cp = {"id": "00000000-0000-0000-0000-000000000001", "checkpoint_id": "chk-001", "session_id": "sess-1"}
+        mock_table = MagicMock()
+        mock_table.select.return_value.or_.return_value.execute.return_value.data = [
+            {"requirement_text": "OAuth flow", "status": "done"}
+        ]
+
+        class FakeClient:
+            def table(self, name):
+                return mock_table
+
+        dx.supabase = FakeClient()
+        with patch.object(dx, "get_checkpoint", return_value=mock_cp), \
+             patch.object(dx, "_run_sql", return_value=[["OAuth flow", 0.9, "2026-09-18T00:00:00Z"]]):
+            res = dx.check_resume_integrity(session_id="sess-1", checkpoint_id="chk-001")
+            self.assertIn("integrity_score", res)
+            or_call_arg = mock_table.select.return_value.or_.call_args[0][0]
+            self.assertIn("00000000-0000-0000-0000-000000000001", or_call_arg)
+
+    def test_defect_e1_multi_session_integrity_supabase_fallback(self):
+        """Defect E.1: Verify calculate_multi_session_integrity falls back to Supabase requirements."""
+        dx = CheckpointDX()
+        mock_cp_table = MagicMock()
+        mock_cp_table.select.return_value.eq.return_value.execute.return_value.data = [{"id": "00000000-0000-0000-0000-000000000001"}]
+        mock_req_table = MagicMock()
+        mock_req_table.select.return_value.eq.return_value.execute.return_value.data = [
+            {"requirement_text": "Req A", "status": "in_progress"},
+            {"requirement_text": "Req B", "status": "ready"}
+        ]
+
+        def fake_table(tbl_name):
+            if tbl_name == "checkpoints":
+                return mock_cp_table
+            return mock_req_table
+
+        with patch.object(dx, "check_resume_integrity", return_value={"integrity_score": 0.9, "reason": "OK"}), \
+             patch.object(dx, "_run_sql", side_effect=Exception("Delta unavailable")), \
+             patch.object(dx.supabase, "table", side_effect=fake_table):
+            res = dx.calculate_multi_session_integrity(["sess-1"])
+            self.assertEqual(res["session_count"], 1)
+            self.assertEqual(res["coverage_ratio"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,14 +3,10 @@
    Professional Humanist & Technical Design Architecture
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   0. PREMIUM TYPOGRAPHY IMPORT
-   -------------------------------------------------------------------------- */
+/* 0. PREMIUM TYPOGRAPHY IMPORT */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* --------------------------------------------------------------------------
-   1. DESIGN TOKENS (FOUNDATION - REFERENCED EVERYWHERE)
-   -------------------------------------------------------------------------- */
+/* 1. DESIGN TOKENS (FOUNDATION - REFERENCED EVERYWHERE) */
 :root {
   /* Spacing scale (8pt base) */
   --space-4: 4px;
@@ -75,9 +71,7 @@
   --font-sans: var(--font-primary);
 }
 
-/* --------------------------------------------------------------------------
-   2. GLOBAL TYPOGRAPHY & RESET
-   -------------------------------------------------------------------------- */
+/* 2. GLOBAL TYPOGRAPHY & RESET */
 html, body, .stApp {
   background-color: var(--bg-primary) !important;
   color: var(--text-primary) !important;
@@ -164,9 +158,7 @@ p.small-caps {
   margin-top: 0 !important;
 }
 
-/* --------------------------------------------------------------------------
-   3. SURFACES / CARDS (ALL PANELS, TILES & METRIC CARDS)
-   -------------------------------------------------------------------------- */
+/* 3. SURFACES / CARDS (ALL PANELS, TILES & METRIC CARDS) */
 .glass-card,
 div[data-testid="stMetric"],
 .metric-card,
@@ -217,9 +209,7 @@ div[data-testid="stMarkdownContainer"] > div:empty {
   transform: none !important;
 }
 
-/* --------------------------------------------------------------------------
-   4. BUTTONS - EXPLICIT HIGH CONTRAST (SOLVES BLACK-ON-BLACK BUG)
-   -------------------------------------------------------------------------- */
+/* 4. BUTTONS - EXPLICIT HIGH CONTRAST (SOLVES BLACK-ON-BLACK BUG) */
 .stButton > button,
 .stDownloadButton > button,
 button[kind="primary"],
@@ -306,9 +296,7 @@ button[kind="secondary"]:hover * {
   color: var(--text-primary) !important;
 }
 
-/* --------------------------------------------------------------------------
-   5. FORM CONTROLS & INPUTS (SOLVES GREY-ON-GREY BUG)
-   -------------------------------------------------------------------------- */
+/* 5. FORM CONTROLS & INPUTS (SOLVES GREY-ON-GREY BUG) */
 .stTextInput input,
 .stTextArea textarea,
 .stNumberInput input,
@@ -429,9 +417,7 @@ div[data-testid="stTabs"] [aria-selected="true"] * {
   background: var(--bg-surface) !important;
 }
 
-/* --------------------------------------------------------------------------
-   6. STATUS & PILL SYSTEM (WCAG AA COLOR-SAFE BADGES)
-   -------------------------------------------------------------------------- */
+/* 6. STATUS & PILL SYSTEM (WCAG AA COLOR-SAFE BADGES) */
 /* Inline markdown code pills - Solves dark block badge collision */
 code,
 pre,
@@ -519,9 +505,7 @@ div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
   border-left: 2px solid var(--accent-primary) !important;
 }
 
-/* --------------------------------------------------------------------------
-   7. FLOATING PILL NAVBAR
-   -------------------------------------------------------------------------- */
+/* 7. FLOATING PILL NAVBAR */
 .nav-capsule {
   position: static !important;
   margin: 0 auto var(--space-20) auto !important;
@@ -554,9 +538,7 @@ div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
   color: var(--accent-primary) !important;
 }
 
-/* --------------------------------------------------------------------------
-   8. DATA VISUALIZATION & METRICS
-   -------------------------------------------------------------------------- */
+/* 8. DATA VISUALIZATION & METRICS */
 [data-testid="stMetricValue"],
 .metric-value,
 .stDataFrame td {
@@ -592,9 +574,7 @@ div[data-testid="stAlert"]:has([data-testid="stNotificationContentInfo"]) {
   color: var(--text-secondary) !important;
 }
 
-/* --------------------------------------------------------------------------
-   9. SIDEBAR & FIXED CHROME
-   -------------------------------------------------------------------------- */
+/* 9. SIDEBAR & FIXED CHROME */
 section[data-testid="stSidebar"] {
   background: var(--bg-glass-solid) !important;
   backdrop-filter: blur(40px) !important;
@@ -624,9 +604,7 @@ section[data-testid="stSidebar"] label {
   padding-bottom: var(--space-80) !important;
 }
 
-/* --------------------------------------------------------------------------
-   10. MOTION SYSTEM & KEYFRAMES
-   -------------------------------------------------------------------------- */
+/* 10. MOTION SYSTEM & KEYFRAMES */
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
@@ -678,9 +656,7 @@ section[data-testid="stSidebar"] label {
   border-radius: var(--radius-sm);
 }
 
-/* --------------------------------------------------------------------------
-   11. ACCESSIBILITY & REDUCED MOTION (MANDATORY)
-   -------------------------------------------------------------------------- */
+/* 11. ACCESSIBILITY & REDUCED MOTION (MANDATORY) */
 :focus-visible {
   outline: 2px solid var(--accent-primary) !important;
   outline-offset: 2px !important;
@@ -699,9 +675,7 @@ section[data-testid="stSidebar"] label {
   }
 }
 
-/* --------------------------------------------------------------------------
-   12. RESPONSIVE LAYOUT RULES
-   -------------------------------------------------------------------------- */
+/* 12. RESPONSIVE LAYOUT RULES */
 @media (max-width: 1024px) {
   .block-container {
     padding-left: var(--space-24) !important;
@@ -719,9 +693,7 @@ section[data-testid="stSidebar"] label {
   }
 }
 
-/* --------------------------------------------------------------------------
-   13. ANTI-TRUNCATION & DATA DISPLAY RULES
-   -------------------------------------------------------------------------- */
+/* 13. ANTI-TRUNCATION & DATA DISPLAY RULES */
 /* Universal Anti-Truncation */
 div[data-testid="stMetric"],
 div[data-testid="stMetric"] *,
@@ -859,6 +831,32 @@ footer { visibility: hidden !important; display: none !important; }
   color: var(--text-tertiary);
   font-weight: bold;
   font-size: 1.25rem;
+}
+
+/* ==========================================================================
+   DOM ACCESSIBILITY & FORM HYGIENE HELPERS
+   ========================================================================== */
+.dx-a11y-helper {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.dx-a11y-marker,
+div[data-testid="stHtml"]:has(.dx-a11y-marker),
+.element-container:has(.dx-a11y-marker) {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
 
 /* ==========================================================================

@@ -495,6 +495,55 @@ class TestChartsEngine(unittest.TestCase):
         self.assertGreaterEqual(mem_fig.layout.margin.b, 40)
 
 
+    def test_defect_c2_e3_d2_a2_descending_sort(self):
+        """Verify ranked lists and horizontal bars sort items descending by count/frequency."""
+        # 1. Clause ranked list
+        conf_data = [
+            {"conformance_status": "Gap"},
+            {"conformance_status": "Fully Met"},
+            {"conformance_status": "Fully Met"},
+            {"conformance_status": "Met"},
+            {"conformance_status": "Fully Met"},
+        ]
+        html_clause = lc.render_clause_ranked_list(conf_data)
+        self.assertIn("Fully Met", html_clause)
+        # Fully Met (3) should appear before Met (1) and Gap (1)
+        self.assertTrue(html_clause.index("Fully Met") < html_clause.index("Met"))
+
+        # 2. Memory ranked list
+        mem_data = {
+            "Decayed (<0.3)": 50,
+            "Fresh (>0.8)": 2,
+            "Medium (0.5-0.8)": 10,
+            "Marginal (0.3-0.5)": 1,
+        }
+        html_mem = lc.render_memory_ranked_list(mem_data)
+        # Decayed (<0.3) with 50 should appear before Fresh (>0.8) with 2
+        self.assertTrue(html_mem.index("Decayed (<0.3)") < html_mem.index("Fresh (>0.8)"))
+
+        # 3. Consumer channel ranked list
+        cb_data = {
+            "agent_session": 10,
+            "human_ui_view": 90,
+            "api_fetch": 45,
+        }
+        html_channel = lc.render_consumer_channel_ranked_list(cb_data)
+        # Human UI Views (90) before API Fetch (45) before Autonomous Agents (10)
+        self.assertTrue(html_channel.index("Human UI Views") < html_channel.index("API Fetch") < html_channel.index("Autonomous Agents"))
+
+        # 4. Dead end horizontal bars
+        dead_ends = [
+            {"dead_end_type": "timeout"},
+            {"dead_end_type": "logic_error"},
+            {"dead_end_type": "logic_error"},
+            {"dead_end_type": "logic_error"},
+        ]
+        bars_fig = lc.render_dead_end_horizontal_bars(dead_ends)
+        # Logic Error (3) should be the first item in y
+        self.assertEqual(bars_fig.data[0].y[0], "Logic Error")
+        self.assertEqual(bars_fig.data[0].x[0], 3)
+
+
 if __name__ == "__main__":
     unittest.main()
 

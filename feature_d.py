@@ -11,6 +11,31 @@ if TYPE_CHECKING:
     from lib.checkpoint_dx import CheckpointDX
 
 
+def _parse_requirement_priority(r: dict) -> int:
+    """Normalize requirement priority tier or integer score to priority rank (1=highest, 3=default)."""
+    tier = str(r.get("priority_tier", "")).upper().strip()
+    if tier == "P0":
+        return 1
+    if tier == "P1":
+        return 2
+    if tier == "P2":
+        return 3
+    val = r.get("priority")
+    if isinstance(val, (int, float)):
+        return int(val)
+    if isinstance(val, str):
+        val_s = val.strip().upper()
+        if val_s == "P0":
+            return 1
+        if val_s == "P1":
+            return 2
+        if val_s == "P2":
+            return 3
+        if val_s.isdigit():
+            return int(val_s)
+    return 3
+
+
 def _assemble_contract_payload(dx: "CheckpointDX", checkpoint_id: str, session_id: str):
     """Core synthesis logic for Feature D.
     Synthesizes Feature B (Unfinished Requirements), Feature A (Dead-End Registry),
@@ -142,7 +167,7 @@ def _assemble_contract_payload(dx: "CheckpointDX", checkpoint_id: str, session_i
             for item in [{
                 "text": txt,
                 "status": str(r.get("status", "not_started")),
-                "priority": int(r["priority"]) if ("priority" in r and isinstance(r["priority"], (int, float))) else 3,
+                "priority": _parse_requirement_priority(r),
             }]
             if txt and norm_txt not in seen
         ])() if (seen := set()) is not None else [],
