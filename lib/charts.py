@@ -1455,9 +1455,9 @@ def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, A
                 dates.append(datetime.fromisoformat(d).strftime("%b %d"))
             except Exception:
                 dates.append(d or "Past")
-        actual = [round(float(h.get("overall_score", 0.85)) * 100.0, 1) for h in hist]
-        f_7d = round(float(trends_data.get("forecast_7d", 0.90)) * 100.0, 1)
-        latest = actual[-1] if actual else 85.0
+        actual = [round(float(h.get("overall_score", 0.0)) * 100.0, 1) for h in hist]
+        f_7d = round(float(trends_data.get("forecast_7d", 0.0)) * 100.0, 1)
+        latest = actual[-1] if actual else 0.0
         f_vals = [
             round(latest + (f_7d - latest) * (i / 3.0), 1)
             for i in range(4)
@@ -2057,15 +2057,15 @@ def render_integrity_trajectory_flagship(trend_res: Optional[Dict[str, Any]] = N
         else:
             label = base_label
         x_labels.append(label)
-        sc = float(h.get("integrity_score") or 0.85)
+        sc = float(h.get("integrity_score") if h.get("integrity_score") is not None else 0.0)
         y_scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     # Append Forecast step
-    proj_val = float(trend_res.get("forecast_7d", (y_scores[-1] / 100.0) + 0.02))
+    proj_val = float(trend_res.get("forecast_7d", (y_scores[-1] / 100.0) if y_scores else 0.0))
     proj_score = proj_val * 100.0 if proj_val <= 1.0 else proj_val
     forecast_label = "Forecast +7d"
 
-    variance = float(trend_res.get("variance", 0.0015))
+    variance = float(trend_res.get("variance", 0.0))
     sigma = math.sqrt(max(variance, 0.0004)) * 100.0
 
     all_x = x_labels + [forecast_label]
@@ -2264,13 +2264,15 @@ def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None)
     return fig
 
 
-def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: float = 0.852) -> go.Figure:
+def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: float = 0.0) -> go.Figure:
     """Agent Memory Confidence Donut with central average confidence."""
     if isinstance(bins_data, list):
+        if not bins_data:
+            return render_empty_chart_state("Agent Memory Confidence Distribution", "No agent memories recorded in Delta Lake or Supabase.")
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         total_conf = 0.0
         for m in bins_data:
-            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.0)) if isinstance(m, dict) else 0.0
             total_conf += c
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
@@ -2280,15 +2282,10 @@ def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: fl
                 binned["Marginal (0.3-0.5)"] += 1
             else:
                 binned["Decayed (<0.3)"] += 1
-        avg_conf = (total_conf / len(bins_data)) if bins_data else avg_conf
+        avg_conf = (total_conf / len(bins_data)) if bins_data else 0.0
         bins_data = binned
-    elif not bins_data or not isinstance(bins_data, dict):
-        bins_data = {
-            "Fresh (>0.8)": 7,
-            "Medium (0.5-0.8)": 2,
-            "Marginal (0.3-0.5)": 1,
-            "Decayed (<0.3)": 1,
-        }
+    elif not bins_data or not isinstance(bins_data, dict) or sum(bins_data.values()) == 0:
+        return render_empty_chart_state("Agent Memory Confidence Distribution", "No agent memories recorded in Delta Lake or Supabase.")
 
     labels = list(bins_data.keys())
     values = list(bins_data.values())
@@ -2308,9 +2305,11 @@ def render_memory_confidence_donut(bins_data: Optional[Any] = None, avg_conf: fl
 def render_memory_radial_gauges(bins_data: Optional[Any] = None) -> go.Figure:
     """Small-multiples radial gauges for Memory Confidence Tiers (Presentation Mode)."""
     if isinstance(bins_data, list):
+        if not bins_data:
+            return render_empty_chart_state("Memory Confidence Share", "No agent memories recorded.")
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.0)) if isinstance(m, dict) else 0.0
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2320,8 +2319,8 @@ def render_memory_radial_gauges(bins_data: Optional[Any] = None) -> go.Figure:
             else:
                 binned["Decayed (<0.3)"] += 1
         bins_data = binned
-    elif not bins_data or not isinstance(bins_data, dict):
-        bins_data = {"Fresh (>0.8)": 7, "Medium (0.5-0.8)": 2, "Marginal (0.3-0.5)": 1, "Decayed (<0.3)": 1}
+    elif not bins_data or not isinstance(bins_data, dict) or sum(bins_data.values()) == 0:
+        return render_empty_chart_state("Memory Confidence Share", "No agent memories recorded.")
 
     tiers = list(bins_data.keys())
     total = sum(bins_data.values()) or 1
@@ -2362,9 +2361,11 @@ def render_memory_radial_gauges(bins_data: Optional[Any] = None) -> go.Figure:
 def render_memory_horizontal_bars(bins_data: Optional[Any] = None) -> go.Figure:
     """Ranked horizontal bars for Memory Confidence Distribution (Presentation Mode)."""
     if isinstance(bins_data, list):
+        if not bins_data:
+            return render_empty_chart_state("Memory Confidence Tiers", "No agent memories recorded.")
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.0)) if isinstance(m, dict) else 0.0
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2374,8 +2375,8 @@ def render_memory_horizontal_bars(bins_data: Optional[Any] = None) -> go.Figure:
             else:
                 binned["Decayed (<0.3)"] += 1
         bins_data = binned
-    elif not bins_data or not isinstance(bins_data, dict):
-        bins_data = {"Fresh (>0.8)": 7, "Medium (0.5-0.8)": 2, "Marginal (0.3-0.5)": 1, "Decayed (<0.3)": 1}
+    elif not bins_data or not isinstance(bins_data, dict) or sum(bins_data.values()) == 0:
+        return render_empty_chart_state("Memory Confidence Tiers", "No agent memories recorded.")
 
     tiers = list(bins_data.keys())
     values = [bins_data[t] for t in tiers]
@@ -2403,9 +2404,11 @@ def render_memory_horizontal_bars(bins_data: Optional[Any] = None) -> go.Figure:
 def render_memory_ranked_list(bins_data: Optional[Any] = None) -> str:
     """Ranked leaderboard list paired beside Memory Confidence Donut."""
     if isinstance(bins_data, list):
+        if not bins_data:
+            return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No agent memories recorded</div>"
         binned = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in bins_data:
-            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.8)) if isinstance(m, dict) else 0.8
+            c = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.0)) if isinstance(m, dict) else 0.0
             if c >= 0.8:
                 binned["Fresh (>0.8)"] += 1
             elif c >= 0.5:
@@ -2415,13 +2418,8 @@ def render_memory_ranked_list(bins_data: Optional[Any] = None) -> str:
             else:
                 binned["Decayed (<0.3)"] += 1
         bins_data = binned
-    elif not bins_data or not isinstance(bins_data, dict):
-        bins_data = {
-            "Fresh (>0.8)": 7,
-            "Medium (0.5-0.8)": 2,
-            "Marginal (0.3-0.5)": 1,
-            "Decayed (<0.3)": 1,
-        }
+    elif not bins_data or not isinstance(bins_data, dict) or sum(bins_data.values()) == 0:
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No agent memories recorded</div>"
 
     total = sum(bins_data.values()) or 1
     colors = [COLORS["success"], COLORS["primary"], COLORS["warning"], COLORS["danger"]]
@@ -2456,7 +2454,7 @@ def render_multi_session_integrity_bar(session_scores: Optional[Dict[str, Any]] 
     sessions = list(session_scores.keys())
     scores = []
     for sid in sessions:
-        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        sc = session_scores[sid].get("score", 0.0) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
         scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     colors = [COLORS["success"] if s >= 80 else COLORS["danger"] for s in scores]
@@ -2582,7 +2580,7 @@ def render_session_radial_gauges(session_scores: Optional[Dict[str, Any]] = None
     sessions = list(session_scores.keys())[:4]
     scores = []
     for sid in sessions:
-        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        sc = session_scores[sid].get("score", 0.0) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
         scores.append(round(sc * 100.0 if sc <= 1.0 else sc, 1))
 
     palette = [COLORS["success"] if s >= 80 else COLORS["danger"] for s in scores]
@@ -2628,7 +2626,7 @@ def render_multi_session_ranked_list(session_scores: Optional[Dict[str, Any]] = 
     sessions = list(session_scores.keys())
     scores = []
     for sid in sessions:
-        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        sc = session_scores[sid].get("score", 0.0) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
         scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     pairs = sorted(zip(sessions, scores), key=lambda x: x[1], reverse=True)

@@ -3221,7 +3221,7 @@ The engineering team recommends adopting the following verified remedy:
             "confidence_interval": [ci_lower, ci_upper],
             "semantic_similarity_confidence": round(raw, 2),
             "code_coverage_confidence": round(tst_qual, 2),
-            "historical_accuracy_confidence": 0.85,
+            "historical_accuracy_confidence": round(max(0.0, min(1.0, 0.5 * (raw + tst_qual))), 2),
             "clause_clarity": clarity,
             "code_complexity": complexity,
             "test_coverage_quality": tst_qual,
@@ -3252,19 +3252,19 @@ The engineering team recommends adopting the following verified remedy:
         compliant_clauses = sum(1 for i in intents if (i.get("implementation_status") or "").lower() in ("met", "fully_met") or (i.get("conformance_grade") or "") in ("A", "B"))
         partial_clauses = sum(1 for i in intents if (i.get("implementation_status") or "").lower() in ("partially_met", "partial"))
         non_compliant = max(0, total_clauses - compliant_clauses)
-        overall_score = round((compliant_clauses + 0.5 * partial_clauses) / total_clauses, 3) if total_clauses > 0 else 0.85
+        overall_score = round((compliant_clauses + 0.5 * partial_clauses) / total_clauses, 3) if total_clauses > 0 else 0.0
 
         by_category = {
-            "functional": {"total": 0, "compliant": 0, "score": 0.85},
-            "security": {"total": 0, "compliant": 0, "score": 0.85},
-            "performance": {"total": 0, "compliant": 0, "score": 0.85},
-            "ui_ux": {"total": 0, "compliant": 0, "score": 0.85},
-            "non_functional": {"total": 0, "compliant": 0, "score": 0.85},
+            "functional": {"total": 0, "compliant": 0, "score": 0.0},
+            "security": {"total": 0, "compliant": 0, "score": 0.0},
+            "performance": {"total": 0, "compliant": 0, "score": 0.0},
+            "ui_ux": {"total": 0, "compliant": 0, "score": 0.0},
+            "non_functional": {"total": 0, "compliant": 0, "score": 0.0},
         }
         for i in intents:
             cat = (i.get("intent_category") or i.get("compliance_category") or i.get("category") or "functional").lower()
             if cat not in by_category:
-                by_category[cat] = {"total": 0, "compliant": 0, "score": 0.85}
+                by_category[cat] = {"total": 0, "compliant": 0, "score": 0.0}
             by_category[cat]["total"] += 1
             st_val = (i.get("implementation_status") or "").lower()
             if st_val in ("met", "fully_met") or (i.get("conformance_grade") or "") in ("A", "B"):
@@ -3332,15 +3332,18 @@ The engineering team recommends adopting the following verified remedy:
 
         grade = "A" if overall_score >= 0.90 else ("B" if overall_score >= 0.75 else ("C" if overall_score >= 0.60 else ("D" if overall_score >= 0.45 else "F")))
 
+        trend_7d = round((history[-1]["overall_score"] - history[0]["overall_score"]) * 100.0, 1) if len(history) >= 2 else 0.0
+
         return {
             "checkpoint_id": checkpoint_id or "default",
+            "overall_score": overall_score,
             "overall_compliance_score": overall_score,
             "conformance_rate": overall_score,
             "grade": grade,
             "total_clauses": total_clauses,
             "compliant_clauses": compliant_clauses,
             "non_compliant_clauses": non_compliant,
-            "compliance_trend_7d": 4.5,
+            "compliance_trend_7d": trend_7d,
             "by_category": by_category,
             "critical_violations": violations,
             "compliance_history": history,
@@ -3566,7 +3569,7 @@ The engineering team recommends adopting the following verified remedy:
                         {
                             "key": r.get("memory_key", ""),
                             "value": r.get("memory_value", ""),
-                            "confidence": float(r.get("confidence", 0.8)),
+                            "confidence": float(r.get("confidence", 0.0) if r.get("confidence") is not None else 0.0),
                             "created_at": str(r.get("created_at") or datetime.now().isoformat()),
                         }
                         for r in supa_res.data
@@ -3790,7 +3793,7 @@ The engineering team recommends adopting the following verified remedy:
             try:
                 m_res = self.supabase.table("agent_memory").select("memory_key, confidence, created_at").eq("session_id", session_id).gte("confidence", 0.3).execute()
                 if m_res and hasattr(m_res, "data") and isinstance(m_res.data, list) and m_res.data:
-                    memory_rows = [[r.get("memory_key"), float(r.get("confidence", 0.8)), r.get("created_at")] for r in m_res.data]
+                    memory_rows = [[r.get("memory_key"), float(r.get("confidence", 0.0) if r.get("confidence") is not None else 0.0), r.get("created_at")] for r in m_res.data]
             except Exception as ex:
                 logger.debug(f"Supabase agent_memory query note: {ex}")
 
@@ -3954,14 +3957,14 @@ The engineering team recommends adopting the following verified remedy:
             for sid, entries in self._local_agent_memory.items():
                 for m in entries:
                     if m.get("memory_key") == memory_key:
-                        cur_conf = float(m.get("confidence", 0.8))
+                        cur_conf = float(m.get("confidence", 0.0) if m.get("confidence") is not None else 0.0)
                         m["confidence"] = max(0.0, min(1.0, round(cur_conf + adjustment, 2)))
 
         if self.supabase:
             try:
                 res = self.supabase.table("agent_memory").select("confidence").eq("memory_key", memory_key).execute()
                 if res and res.data:
-                    old_c = float(res.data[0].get("confidence", 0.8))
+                    old_c = float(res.data[0].get("confidence", 0.0) if res.data[0].get("confidence") is not None else 0.0)
                     new_c = max(0.0, min(1.0, round(old_c + adjustment, 2)))
                     self.supabase.table("agent_memory").update({"confidence": new_c}).eq("memory_key", memory_key).execute()
             except Exception as e:
@@ -4312,7 +4315,7 @@ The engineering team recommends adopting the following verified remedy:
             r = q.execute()
             for row in (r.data or []):
                 c_at = row.get("created_at") or ""
-                conf = float(row.get("confidence") or 0.8)
+                conf = float(row.get("confidence") or 0.0)
                 is_stale = False
                 if c_at and c_at < cutoff_iso:
                     is_stale = True
@@ -4335,7 +4338,7 @@ The engineering team recommends adopting the following verified remedy:
                 if not any(c.get("memory_key") == k for c in candidates):
                     candidates.append({
                         "memory_key": k,
-                        "confidence": float(dbr[1]) if len(dbr) > 1 else 0.5,
+                        "confidence": float(dbr[1]) if len(dbr) > 1 and dbr[1] is not None else 0.0,
                         "created_at": dbr[2] if len(dbr) > 2 else cutoff_iso,
                         "session_id": dbr[3] if len(dbr) > 3 else session_id,
                     })
@@ -4347,7 +4350,7 @@ The engineering team recommends adopting the following verified remedy:
             for sid in sids:
                 for entry in self._local_agent_memory.get(sid, []):
                     c_at = entry.get("created_at") or ""
-                    conf = float(entry.get("confidence") or 0.8)
+                    conf = float(entry.get("confidence") or 0.0)
                     k = entry.get("memory_key")
                     if (c_at and c_at < cutoff_iso) or conf < 0.2:
                         if not any(c.get("memory_key") == k for c in candidates):
@@ -5175,7 +5178,7 @@ The engineering team recommends adopting the following verified remedy:
                     cat = "functional"
 
             clusters[cat]["intents"].append(item)
-            conf_score = float(item.get("confidence_score") or item.get("calibrated_confidence") or 0.85)
+            conf_score = float(item.get("confidence_score") or item.get("calibrated_confidence") or 0.0)
             clusters[cat]["scores"].append(conf_score)
 
             status = str(item.get("implementation_status") or "").lower()
@@ -5229,22 +5232,35 @@ The engineering team recommends adopting the following verified remedy:
         except Exception:
             pass
 
-        if len(history) < 3:
-            now = datetime.now()
-            default_scores = [0.72, 0.76, 0.81, 0.85, 0.88, 0.89, 0.92]
-            history = []
-            for d, score in enumerate(default_scores):
-                dt = (now - timedelta(days=(len(default_scores) - 1 - d))).isoformat()
-                history.append({
-                    "recorded_at": dt,
-                    "overall_score": score,
-                    "total_clauses": 10,
-                    "compliant_clauses": int(score * 10),
-                })
+        if not history:
+            try:
+                if self.supabase:
+                    int_rows = self.supabase.table("intent_summaries").select("checkpoint_id, conformance_grade, implementation_status, created_at").order("created_at", desc=False).limit(30).execute().data or []
+                    if checkpoint_id:
+                        int_rows = [r for r in int_rows if r.get("checkpoint_id") == cid]
+                    for r in int_rows:
+                        is_comp = 1.0 if (r.get("conformance_grade") in ("A", "B") or r.get("implementation_status") in ("met", "fully_met")) else 0.5
+                        history.append({
+                            "recorded_at": r.get("created_at") or datetime.now().isoformat(),
+                            "overall_score": is_comp,
+                            "total_clauses": 1,
+                            "compliant_clauses": 1 if is_comp == 1.0 else 0,
+                        })
+            except Exception:
+                pass
 
-        scores = [float(h.get("overall_score", 0.85)) for h in history if h.get("overall_score") is not None]
+        scores = [float(h.get("overall_score", 0.0)) for h in history if h.get("overall_score") is not None]
         if not scores:
-            scores = [0.85]
+            return {
+                "history": [],
+                "trend_direction": "stable",
+                "slope": 0.0,
+                "trend_magnitude": 0.0,
+                "forecast_7d": 0.0,
+                "average_conformance": 0.0,
+                "variance": 0.0,
+                "summary": "[STABLE] No historical compliance trajectory recorded in Delta Lake or Supabase.",
+            }
         n = len(scores)
         x = list(range(n))
         y = scores
@@ -5910,12 +5926,12 @@ The engineering team recommends adopting the following verified remedy:
             "traffic_split": float(traffic_split),
             "status": "running",
             "results": {
-                "variant_a_impressions": 12,
-                "variant_b_impressions": 14,
-                "variant_a_conversions": 9,
-                "variant_b_conversions": 13,
-                "statistical_confidence": 0.92,
-                "winner": variant_b_id,
+                "variant_a_impressions": 0,
+                "variant_b_impressions": 0,
+                "variant_a_conversions": 0,
+                "variant_b_conversions": 0,
+                "statistical_confidence": 0.0,
+                "winner": None,
             },
             "start_date": datetime.now().isoformat(),
             "end_date": None,
@@ -5952,28 +5968,36 @@ The engineering team recommends adopting the following verified remedy:
         for t in tests:
             res = t.get("results")
             if isinstance(res, dict):
-                imp_a = max(int(res.get("variant_a_impressions", 0)), 1)
+                raw_imp_a = int(res.get("variant_a_impressions", 0))
+                raw_imp_b = int(res.get("variant_b_impressions", 0))
                 conv_a = int(res.get("variant_a_conversions", 0))
-                rate_a = conv_a / imp_a
-
-                imp_b = max(int(res.get("variant_b_impressions", 0)), 1)
                 conv_b = int(res.get("variant_b_conversions", 0))
-                rate_b = conv_b / imp_b
 
-                if rate_b > rate_a:
-                    res["winner"] = t.get("variant_b_id", "qa")
-                elif rate_a > rate_b:
-                    res["winner"] = t.get("variant_a_id", "dev")
+                if raw_imp_a + raw_imp_b > 0 and (conv_a > 0 or conv_b > 0):
+                    imp_a = max(raw_imp_a, 1)
+                    imp_b = max(raw_imp_b, 1)
+                    rate_a = conv_a / imp_a
+                    rate_b = conv_b / imp_b
 
-                # Dynamic two-proportion z-test statistical confidence
-                p_pool = (conv_a + conv_b) / (imp_a + imp_b)
-                if 0 < p_pool < 1:
-                    se = math.sqrt(p_pool * (1.0 - p_pool) * (1.0 / imp_a + 1.0 / imp_b))
-                    z = abs(rate_b - rate_a) / se if se > 0 else 0.0
-                    conf = math.erf(z / math.sqrt(2.0))
-                    res["statistical_confidence"] = round(min(0.99, max(0.50, conf)), 2)
+                    if rate_b > rate_a:
+                        res["winner"] = t.get("variant_b_id", "qa")
+                    elif rate_a > rate_b:
+                        res["winner"] = t.get("variant_a_id", "dev")
+                    else:
+                        res["winner"] = None
+
+                    # Dynamic two-proportion z-test statistical confidence
+                    p_pool = (conv_a + conv_b) / (imp_a + imp_b)
+                    if 0 < p_pool < 1:
+                        se = math.sqrt(p_pool * (1.0 - p_pool) * (1.0 / imp_a + 1.0 / imp_b))
+                        z = abs(rate_b - rate_a) / se if se > 0 else 0.0
+                        conf = math.erf(z / math.sqrt(2.0))
+                        res["statistical_confidence"] = round(min(0.99, max(0.0, conf)), 2)
+                    else:
+                        res["statistical_confidence"] = 0.0
                 else:
-                    res["statistical_confidence"] = 0.50
+                    res["winner"] = None
+                    res["statistical_confidence"] = 0.0
 
         return tests
 

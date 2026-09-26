@@ -494,7 +494,7 @@ with st.container():
         except Exception:
             cached_diag = {}
 
-    s5_score_val = round(float(cached_diag.get("overall_integrity", 0.85) * 100), 1)
+    s5_score_val = round(float(cached_diag.get("overall_integrity", 0.0) * 100), 1)
     is_s5_blocked = (cached_diag.get("status") == "[BLOCKED]") or (s5_score_val < 60.0)
     s5_status_val = "fail" if is_s5_blocked else "pass"
     s5_detail_label = f"{s5_score_val:.1f}% [BLOCKED]" if is_s5_blocked else f"{s5_score_val:.1f}% [SAFE]"
@@ -583,7 +583,7 @@ with st.container():
     s2_analytics = dx.get_requirement_status_analytics(selected_cid)
     s2_score = round(float(s2_analytics.get("completion_rate", 0.0) * 100.0), 1)
     s3_score = round(float(dash_c.get("overall_score", 0.0)), 1) if dash_c else 0.0
-    s4_score = round(float(s4_vers[-1].get("integrity", 95.0)), 1) if s4_vers else 0.0
+    s4_score = round(float(s4_vers[-1].get("integrity", 0.0)), 1) if s4_vers else 0.0
 
     stages_pipeline = [
         {"name": "Dead-End", "status": "pass" if s1_score >= 60 else "warn", "score": s1_score, "spark": s1_spark, "detail": s1_detail_label, "num": "01", "title": "Dead-End Registry"},
@@ -740,8 +740,10 @@ with tab_a:
         avg_conf = (sum(d.get("confidence_score", 0) for d in dead_ends) / len(dead_ends)) if dead_ends else 0.0
         st.metric("Avg Confidence", f"{avg_conf:.1%}")
     with col4:
-        success_rate = fix_analytics.get('overall_success_rate', 66.7)
-        st.metric("Fix Success Rate", f"{success_rate:.1f}%", f"{fix_analytics.get('worked_count', 2)} of {fix_analytics.get('total_tested', 3)} tested")
+        success_rate = float(fix_analytics.get('overall_success_rate', 0.0))
+        worked = int(fix_analytics.get('worked_count', 0))
+        tested = int(fix_analytics.get('total_tested', 0))
+        st.metric("Fix Success Rate", f"{success_rate:.1f}%", f"{worked} of {tested} tested")
         st.markdown(lc.render_trend_chip_html(success_rate, 75.0, label="vs 75% target", is_higher_better=True), unsafe_allow_html=True)
 
     # Feature A Visualizations & Distribution Analytics
@@ -1214,34 +1216,29 @@ ORDER BY created_at DESC LIMIT 5;
                             "Type": r[1] if len(r) > 1 else "logic_error",
                             "Root Cause": r[2] if len(r) > 2 else "Unspecified root cause",
                             "Remedy": r[3] if len(r) > 3 else "Inspect diagnostic logs",
-                            "Confidence": f"{float(r[4]):.1%}" if len(r) > 4 and r[4] is not None else "90.0%",
+                            "Confidence": f"{float(r[4]):.1%}" if len(r) > 4 and r[4] is not None else "0.0%",
                             "Status": "[LIVE DELTA]",
                         })
             except Exception:
                 pass
 
-            if not live_rows:
-                if dead_ends:
-                    for d in dead_ends[:5]:
-                        live_rows.append({
-                            "Trace ID": f"tr-{str(d.get('id', '001'))[:8]}",
-                            "Checkpoint": d.get("checkpoint_id", selected_cid),
-                            "Type": d.get("dead_end_type", "logic_error"),
-                            "Root Cause": d.get("root_cause", "N/A"),
-                            "Remedy": d.get("suggested_fix", "N/A"),
-                            "Confidence": f"{d.get('confidence_score', 0.9):.1%}",
-                            "Status": "[DELTA BUFFER]" if d.get("used_fallback") else "[CAPTURED]",
-                        })
-                else:
-                    live_rows = [
-                        {"Trace ID": "tr-9a1b2c3d-001", "Checkpoint": selected_cid, "Type": "logic_error", "Root Cause": "Synchronous token verification deadlock under concurrent API worker load", "Remedy": "Adopt distributed Redis mutex lock with double-checked token cache lookup", "Confidence": "96.0%", "Status": "[CAPTURED]"},
-                        {"Trace ID": "tr-4e5f6a7b-002", "Checkpoint": selected_cid, "Type": "timeout", "Root Cause": "Databricks warehouse connection timeout during cold start query submission", "Remedy": "Enable statement polling with exponential backoff jitter and client cache", "Confidence": "88.0%", "Status": "[CAPTURED]"},
-                        {"Trace ID": "tr-8c9d0e1f-003", "Checkpoint": selected_cid, "Type": "resource_exhaustion", "Root Cause": "Unbounded memory allocation during full unpartitioned delta lake trace scan", "Remedy": "Streaming generator chunking with mandatory LIMIT 100 clause", "Confidence": "85.0%", "Status": "[CAPTURED]"},
-                        {"Trace ID": "tr-2a3b4c5d-004", "Checkpoint": selected_cid, "Type": "schema_mismatch", "Root Cause": "Unchecked JSON column deserialization missing optional telemetry version field", "Remedy": "Add defensive Pydantic validator with default null fallback handlers", "Confidence": "72.0%", "Status": "[CAPTURED]"},
-                        {"Trace ID": "tr-7e8f9a0b-005", "Checkpoint": selected_cid, "Type": "deadlock", "Root Cause": "Cross-worker transaction lock collision on requirement ledger table", "Remedy": "Deterministic alphanumeric lock acquisition ordering across worker threads", "Confidence": "91.0%", "Status": "[CAPTURED]"},
-                    ]
-            st.markdown(f'<div style="margin-top:12px;margin-bottom:8px;"><span class="badge-pill badge-pill-success">[CONNECTED]</span> <strong>{query_source}</strong> (Query Latency: {query_latency})</div>', unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame(live_rows), use_container_width=True)
+            if not live_rows and dead_ends:
+                for d in dead_ends[:5]:
+                    live_rows.append({
+                        "Trace ID": f"tr-{str(d.get('id', '001'))[:8]}",
+                        "Checkpoint": d.get("checkpoint_id", selected_cid),
+                        "Type": d.get("dead_end_type", "logic_error"),
+                        "Root Cause": d.get("root_cause", "N/A"),
+                        "Remedy": d.get("suggested_fix", "N/A"),
+                        "Confidence": f"{float(d.get('confidence_score', 0.0)):.1%}" if d.get("confidence_score") is not None else "0.0%",
+                        "Status": "[DELTA BUFFER]" if d.get("used_fallback") else "[CAPTURED]",
+                    })
+
+            if live_rows:
+                st.markdown(f'<div style="margin-top:12px;margin-bottom:8px;"><span class="badge-pill badge-pill-success">[CONNECTED]</span> <strong>{query_source}</strong> (Query Latency: {query_latency})</div>', unsafe_allow_html=True)
+                st.dataframe(pd.DataFrame(live_rows), use_container_width=True)
+            else:
+                st.info(f"No dead-end traces recorded in Delta Lake or Supabase for checkpoint {selected_cid}.")
 
 
 # ==============================================================================
@@ -2271,12 +2268,21 @@ with tab_c:
             target_fpath = st.text_input("Target Implementation File", value="lib/checkpoint_dx.py", key="f3_target_fpath")
 
         if st.button("Evaluate 8-State Status & Generate Auto-Remediation", key="btn_eval_status_remedy"):
-            test_hunks = [{
-                "file_path": target_fpath,
-                "diff_hunk": "def authenticate_user(): pass\ndef verify_token(): return True",
-                "confidence": 0.72,
-                "matched_lines": [42],
-            }]
+            test_hunks = []
+            if os.path.exists(target_fpath):
+                try:
+                    with open(target_fpath, "r", encoding="utf-8") as f:
+                        file_lines = f.readlines()
+                    matched_lines = [idx for idx, line in enumerate(file_lines, 1) if any(w in line.lower() for w in eval_clause.lower().split() if len(w) > 4)]
+                    snippet = "".join(file_lines[:50])
+                    test_hunks = [{
+                        "file_path": target_fpath,
+                        "diff_hunk": snippet,
+                        "confidence": 0.85 if matched_lines else 0.40,
+                        "matched_lines": matched_lines[:5] or [1],
+                    }]
+                except Exception:
+                    pass
             with st.spinner("Classifying implementation status and calibrating confidence..."):
                 status_res = dx.classify_implementation_status(
                     clause_text=eval_clause,
@@ -2284,11 +2290,12 @@ with tab_c:
                     has_tests=has_tests_flag,
                     is_blocked=is_blocked_flag,
                 )
+                raw_c = float(status_res.get("confidence", 0.0))
                 calib_res = dx.calibrate_confidence_score(
-                    raw_confidence=status_res.get("confidence", 0.75),
-                    clause_clarity=0.85,
-                    code_complexity=0.45,
-                    test_quality=0.80 if has_tests_flag else 0.40,
+                    raw_confidence=raw_c,
+                    clause_clarity=0.85 if len(eval_clause.split()) > 4 else 0.50,
+                    code_complexity=0.45 if test_hunks else 0.10,
+                    test_quality=0.80 if has_tests_flag else 0.0,
                 )
                 remedy_res = dx.generate_auto_remediations(
                     clause_text=eval_clause,
@@ -2304,32 +2311,12 @@ with tab_c:
         remedy_res = st.session_state.get("f3_remedy_res")
 
         if not status_res or not calib_res or not remedy_res:
-            status_res = dx.classify_implementation_status(
-                clause_text=eval_clause,
-                matched_hunks=[{
-                    "file_path": target_fpath or "lib/checkpoint_dx.py",
-                    "diff_hunk": "def authenticate_user(): pass\ndef verify_token(): return True",
-                    "confidence": 0.72,
-                    "matched_lines": [42],
-                }],
-                has_tests=has_tests_flag,
-                is_blocked=is_blocked_flag,
-            )
-            calib_res = dx.calibrate_confidence_score(0.72, 0.85, 0.45, 0.40)
-            remedy_res = dx.generate_auto_remediations(
-                clause_text=eval_clause,
-                missing_aspects=status_res.get("missing_aspects", []) or ["Clock-skew tolerance validation", "Token exp claim verification"],
-                file_path=target_fpath or "lib/checkpoint_dx.py",
-            )
-            st.session_state["f3_status_res"] = status_res
-            st.session_state["f3_calib_res"] = calib_res
-            st.session_state["f3_remedy_res"] = remedy_res
-
-        if status_res and calib_res and remedy_res:
+            st.info("Configure evaluation parameters above and click 'Evaluate 8-State Status & Generate Auto-Remediation' to analyze live code diffs and synthesize patches.")
+        else:
             st.markdown("---")
             prim_status = status_res.get("primary_status", "partially_met").upper()
             status_badge = f"[{prim_status}]"
-            comp_pct = status_res.get("completion_percentage", 50)
+            comp_pct = int(status_res.get("completion_percentage", 0))
 
             st_c1, st_c2, st_c3 = st.columns(3)
             with st_c1:
@@ -2337,8 +2324,8 @@ with tab_c:
             with st_c2:
                 st.metric("Completion Progress", f"{comp_pct}%", help="Percentage of required clause aspects found verified in codebase diffs")
             with st_c3:
-                calib_val = calib_res.get("calibrated_score", 0.75)
-                ci = calib_res.get("confidence_interval", [0.65, 0.85])
+                calib_val = float(calib_res.get("calibrated_score", 0.0))
+                ci = calib_res.get("confidence_interval", [0.0, 0.0])
                 st.metric("Calibrated Confidence (95% CI)", f"{calib_val:.1%}", f"[{ci[0]:.1%} - {ci[1]:.1%}]", help="Statistical certainty of the semantic model evaluated across Platt scaling")
 
             st.progress(comp_pct / 100.0)
@@ -2434,18 +2421,16 @@ with tab_c:
             mag = trend_data.get("trend_magnitude", 0.0)
             st.metric("Trajectory Slope", f"{trend_data.get('slope', 0.0):+.4f}/day", f"|mag|: {mag:.4f}")
         with tr_col3:
-            st.metric("Average Conformance", f"{trend_data.get('average_conformance', 0.85):.1%}")
+            st.metric("Average Conformance", f"{trend_data.get('average_conformance', 0.0):.1%}")
         with tr_col4:
-            st.metric("7-Day Forecast", f"{trend_data.get('forecast_7d', 0.90):.1%}")
+            st.metric("7-Day Forecast", f"{trend_data.get('forecast_7d', 0.0):.1%}")
 
         st.info(f"**Trajectory Analysis:** {trend_data.get('summary', 'No summary available.')}")
 
         # Historical Trend Data Table & Trajectory Chart
         hist_rows = trend_data.get("history", [])
         st.plotly_chart(lc.render_intent_conformance_trajectory_chart(trend_data), use_container_width=True)
-        is_seed_conf = trend_data.get("is_seed", False) or len(hist_rows) < 3 or (
-            len(hist_rows) == 7 and [h.get("overall_score") for h in hist_rows] == [0.72, 0.76, 0.81, 0.85, 0.88, 0.89, 0.92]
-        )
+        is_seed_conf = trend_data.get("is_seed", False) or len(hist_rows) < 3
         if is_seed_conf:
             st.caption("*Historical compliance trajectory queried from Supabase 'intent_summaries' & Databricks Delta.*")
         forecast_val = trend_data.get("forecast_7d", 0.0)
@@ -2464,14 +2449,14 @@ with tab_c:
         else:
             for cl in clusters:
                 c_status = cl.get("conformance_status", "[HEALTHY]")
-                c_score = cl.get("average_conformance_score", 0.85)
+                c_score = float(cl.get("average_conformance_score", 0.0))
                 c_cat = cl.get("category", "functional").upper()
                 label = f"{cl.get('cluster_name')} -- {c_status} | Category: [{c_cat}] | Score: {c_score:.1%} | Clauses: {cl.get('member_count')}"
                 with st.expander(label, expanded=True):
                     cpb_1, cpb_2 = st.columns([3, 1])
                     with cpb_1:
                         st.markdown(f"**Average Conformance:** `{c_score:.1%}`")
-                        st.progress(c_score)
+                        st.progress(max(0.0, min(1.0, c_score)))
                     with cpb_2:
                         st.metric("Unresolved Gaps", cl.get("unresolved_gaps_count", 0))
 
@@ -3081,7 +3066,7 @@ with tab_d:
         ab_m1, ab_m2, ab_m3 = st.columns(3)
         ab_tests = dx.get_ab_tests()
         ab_m1.metric("Active A/B Tests", len(ab_tests))
-        total_imp = sum([(t.get("results") or {}).get("variant_a_impressions", 0) + (t.get("results") or {}).get("variant_b_impressions", 0) for t in ab_tests]) if ab_tests else 26
+        total_imp = sum([(t.get("results") or {}).get("variant_a_impressions", 0) + (t.get("results") or {}).get("variant_b_impressions", 0) for t in ab_tests]) if ab_tests else 0
         ab_m2.metric("Total Variant Loads", total_imp)
         conf_vals = []
         for t in ab_tests:
@@ -3092,8 +3077,8 @@ with tab_d:
                     conf_vals.append(float(c))
                 except (ValueError, TypeError):
                     pass
-        max_conf = max(conf_vals) if conf_vals else 0.92
-        display_conf = f"{max_conf * 100:.1f}%" if max_conf <= 1.0 else f"{max_conf:.1f}%"
+        max_conf = max(conf_vals) if conf_vals else 0.0
+        display_conf = f"{max_conf * 100:.1f}%" if (0.0 < max_conf <= 1.0) else (f"{max_conf:.1f}%" if max_conf > 1.0 else "0.0%")
         ab_m3.metric("Leading Winner Confidence", display_conf)
 
         with st.expander("Launch New Template A/B Test", expanded=False):
@@ -3123,12 +3108,13 @@ with tab_d:
                 imp_b = max(int(res.get("variant_b_impressions", 0)), 1)
                 conv_b = int(res.get("variant_b_conversions", 0))
                 rate_b = conv_b / imp_b
-                winner_id = res.get("winner") or (t.get("variant_b_id") if rate_b > rate_a else t.get("variant_a_id"))
+                winner_id = res.get("winner") or (t.get("variant_b_id") if rate_b > rate_a else (t.get("variant_a_id") if rate_a > rate_b else None))
+                winner_badge = str(winner_id).upper() if winner_id else "PENDING"
                 st.markdown(
                     f"**Test:** `{t.get('test_name')}` | Status: `[{t.get('status', 'running').upper()}]` | "
                     f"Variant A (`{t.get('variant_a_id')}`): {res.get('variant_a_impressions', 0)} views ({res.get('variant_a_conversions', 0)} completed, {rate_a:.1%}) vs "
                     f"Variant B (`{t.get('variant_b_id')}`): {res.get('variant_b_impressions', 0)} views ({res.get('variant_b_conversions', 0)} completed, {rate_b:.1%}) | "
-                    f"Winner: **[{str(winner_id).upper()}]** ({res.get('statistical_confidence', 0.92):.0%} conf)"
+                    f"Winner: **[{winner_badge}]** ({res.get('statistical_confidence', 0.0):.0%} conf)"
                 )
 
         else:
@@ -3167,69 +3153,60 @@ with tab_d:
                 except Exception as ex:
                     logger.debug(f"Contract fetch note for semantic diff: {ex}")
 
-            # Fallback to current session contract or synthesized structure if versions not yet persisted
+            # Check if contract versions exist in Supabase or session state
             contract_key_val = f"last_contract_{selected_cid}_{selected_template}_{selected_purpose}"
             current_contract_payload = (st.session_state.get(contract_key_val) or {}).get("contract", {})
-            current_score_val = (current_contract_payload.get("integrity_check") or {}).get("integrity_score")
-            current_score = float(current_score_val) if current_score_val is not None else 0.88
+            if contract_v_b is None and current_contract_payload and current_contract_payload.get("version") == int(diff_v_b):
+                contract_v_b = current_contract_payload
 
-            p_a = contract_v_a or {
-                "version": int(diff_v_a),
-                "unresolved_requirements": current_contract_payload.get("unresolved_requirements", [])[:2],
-                "do_not_retry": current_contract_payload.get("do_not_retry", [])[:2],
-                "flagged_gaps": current_contract_payload.get("flagged_gaps", [])[:1],
-                "integrity_check": {"integrity_score": max(0.40, round(current_score - 0.15, 2))},
-            }
-            p_b = contract_v_b or current_contract_payload or {
-                "version": int(diff_v_b),
-                "unresolved_requirements": current_contract_payload.get("unresolved_requirements", []),
-                "do_not_retry": current_contract_payload.get("do_not_retry", []),
-                "flagged_gaps": [],
-                "integrity_check": {"integrity_score": current_score},
-            }
+            if not contract_v_a or not contract_v_b:
+                missing_v = diff_v_a if not contract_v_a else diff_v_b
+                st.info(f"Contract version v{missing_v} is not persisted in Supabase 'resume_contracts' for this checkpoint. Persist multiple contract versions to compute semantic diff.")
+            else:
+                p_a = contract_v_a
+                p_b = contract_v_b
+                diff_result = dx.compute_semantic_contract_diff(p_a, p_b)
+                st.session_state[f"semantic_diff_{selected_cid}"] = diff_result
 
-            diff_result = dx.compute_semantic_contract_diff(p_a, p_b)
-            st.session_state[f"semantic_diff_{selected_cid}"] = diff_result
+                score_a = float((p_a.get("integrity_check") or {}).get("integrity_score") or 0.0)
+                score_b = float((p_b.get("integrity_check") or {}).get("integrity_score") or 0.0)
+                integrity_delta = round(score_b - score_a, 3)
 
-            score_a = float((p_a.get("integrity_check") or {}).get("integrity_score") or 0.0)
-            score_b = float((p_b.get("integrity_check") or {}).get("integrity_score") or 0.0)
-            integrity_delta = round(score_b - score_a, 3)
+                # Build category distribution for the chart renderer
+                added_reqs = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "requirement_added")
+                resolved_de = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "dead_end_resolved")
+                resolved_gaps = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "intent_conformance_changed" and c.get("severity") == "minor")
 
-            # Build category distribution for the chart renderer
-            added_reqs = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "requirement_added")
-            resolved_de = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "dead_end_resolved")
-            resolved_gaps = sum(1 for c in diff_result.get("changes", []) if c.get("change_type") == "intent_conformance_changed" and c.get("severity") == "minor")
+                diff_chart_data = {
+                    "Added Requirements": added_reqs,
+                    "Resolved Dead-Ends": -resolved_de,
+                    "Addressed Intent Gaps": -resolved_gaps,
+                    "Integrity Gain (%)": round(integrity_delta * 100.0, 1),
+                }
 
-            diff_chart_data = {
-                "Added Requirements": added_reqs,
-                "Resolved Dead-Ends": -resolved_de,
-                "Addressed Intent Gaps": -resolved_gaps,
-                "Integrity Gain (%)": round(integrity_delta * 100.0, 1),
-            }
+                df_m1, df_m2, df_m3 = st.columns(3)
+                df_m1.metric("Total Changes Detected", diff_result.get("total_changes", 0))
+                df_m2.metric("Scope Delta", f"v{diff_v_a} -> v{diff_v_b}")
+                df_m3.metric("Integrity Delta", f"{integrity_delta:+.2f} ({score_a:.2f} -> {score_b:.2f})")
+                st.plotly_chart(lc.render_semantic_diff_bars(diff_chart_data), use_container_width=True)
+                st.caption(f"**Semantic Diff Takeaway**: Net delta demonstrates {added_reqs:+d} verified requirement(s) and {-resolved_de:+d} eliminated dead-end(s), generating a {integrity_delta * 100.0:+.1f}% integrity delta.")
 
-            df_m1, df_m2, df_m3 = st.columns(3)
-            df_m1.metric("Total Changes Detected", diff_result.get("total_changes", 0))
-            df_m2.metric("Scope Delta", f"v{diff_v_a} -> v{diff_v_b}")
-            df_m3.metric("Integrity Delta", f"{integrity_delta:+.2f} ({score_a:.2f} -> {score_b:.2f})")
-            st.plotly_chart(lc.render_semantic_diff_bars(diff_chart_data), use_container_width=True)
-            st.caption(f"**Semantic Diff Takeaway**: Net delta demonstrates {added_reqs:+d} verified requirement(s) and {-resolved_de:+d} eliminated dead-end(s), generating a {integrity_delta * 100.0:+.1f}% integrity delta.")
+                num_detected_changes = len(diff_result.get("changes", []))
+                distinct_detected_types = len({ch.get("change_type") for ch in diff_result.get("changes", [])})
+                st.markdown(f"#### Classified Changes ({num_detected_changes} detected across {distinct_detected_types} of 8 supported semantic change types)")
+                for ch in diff_result.get("changes", []):
+                    sev_tag = f"[{ch.get('severity', 'medium').upper()}]"
+                    st.markdown(f"- **{sev_tag} {ch.get('change_type')}:** {ch.get('description')}")
 
-            num_detected_changes = len(diff_result.get("changes", []))
-            distinct_detected_types = len({ch.get("change_type") for ch in diff_result.get("changes", [])})
-            st.markdown(f"#### Classified Changes ({num_detected_changes} detected across {distinct_detected_types} of 8 supported semantic change types)")
-            for ch in diff_result.get("changes", []):
-                sev_tag = f"[{ch.get('severity', 'medium').upper()}]"
-                st.markdown(f"- **{sev_tag} {ch.get('change_type')}:** {ch.get('description')}")
+                st.markdown("#### Impact Analysis")
+                imp = diff_result.get("impact_analysis", {})
+                st.info(f"**Impact on Development:** {imp.get('impact_on_development')}")
+                st.warning(f"**Impact on QA:** {imp.get('impact_on_qa')}")
+                st.success(f"**Timeline Forecast:** {imp.get('impact_on_timeline')}")
 
-            st.markdown("#### Impact Analysis")
-            imp = diff_result.get("impact_analysis", {})
-            st.info(f"**Impact on Development:** {imp.get('impact_on_development')}")
-            st.warning(f"**Impact on QA:** {imp.get('impact_on_qa')}")
-            st.success(f"**Timeline Forecast:** {imp.get('impact_on_timeline')}")
-
-            st.markdown("#### Actionable Stakeholder Recommendations")
-            for rec in diff_result.get("stakeholder_recommendations", []):
-                st.markdown(f"- **[{rec.get('role')}]:** {rec.get('action')}")
+                st.markdown("#### Actionable Stakeholder Recommendations")
+                for rec in diff_result.get("stakeholder_recommendations", []):
+                    st.markdown(f"- **[{rec.get('role')}]:** {rec.get('action')}")
 
         st.divider()
         st.subheader("Advanced Usage Analytics & Developer ROI Dashboard")
@@ -3446,10 +3423,13 @@ with tab_e:
             st.caption("*Historical integrity trajectory computed from Supabase 'integrity_score_history' & Delta Lake.*")
         st.caption(f"**Flagship Trajectory Takeaway**: {trend_res.get('summary', 'Integrity is stable.')} Safe resume band (&ge;80%) is maintained with forecast reaching {trend_res['forecast_7d']:.1%}.")
     with t_col2:
-        hist_pts = [float(h.get("integrity_score", 0.85)) for h in (trend_res.get("history") or [])] or [0.82, 0.85, 0.88, 0.91, 0.94]
-        st.markdown(lc.render_metric_sparkline_svg(hist_pts, color="#0071E3", height=28, width=120), unsafe_allow_html=True)
+        hist_pts = [float(h.get("integrity_score", 0.0)) for h in (trend_res.get("history") or [])]
+        if hist_pts:
+            st.markdown(lc.render_metric_sparkline_svg(hist_pts, color="#0071E3", height=28, width=120), unsafe_allow_html=True)
+        else:
+            st.caption("No history points recorded")
         st.metric("7-Day Forecast", f"{trend_res['forecast_7d']:.1%}")
-        st.markdown(lc.render_trend_chip_html(trend_res['forecast_7d'], trend_res.get('average_score', 0.88), label="vs 7d avg", is_higher_better=True), unsafe_allow_html=True)
+        st.markdown(lc.render_trend_chip_html(trend_res['forecast_7d'], trend_res.get('average_score', 0.0), label="vs 7d avg", is_higher_better=True), unsafe_allow_html=True)
         st.metric("Trajectory Slope", f"{trend_res['slope']:+.4f}/step")
         st.metric("Variance (1s)", f"{math.sqrt(trend_res['variance']):.4f}")
 
@@ -3478,10 +3458,10 @@ with tab_e:
         st.session_state[f"last_diagnosis_{selected_session}"] = diagnosis
 
         if not integrity:
-            integrity = {"integrity_score": diagnosis.get("overall_integrity", 0.85), "reason": diagnosis.get("primary_root_cause", "Calculated via diagnosis engine")}
+            integrity = {"integrity_score": diagnosis.get("overall_integrity", 0.0), "reason": diagnosis.get("primary_root_cause", "No diagnostic record available")}
             st.session_state[f"last_integrity_{selected_session}"] = integrity
 
-        cur_score = float(integrity.get("integrity_score", 0.85) if integrity.get("integrity_score") is not None else 0.85)
+        cur_score = float(integrity.get("integrity_score", 0.0) if integrity.get("integrity_score") is not None else 0.0)
         cur_reason = integrity.get("reason", "Evaluated via memory ledger")
         cur_stale = integrity.get("stale_memory_count", 0)
         cur_conflicts = [] if st.session_state.get(f"contradiction_resolved_{selected_session}") else integrity.get("conflicts", [])
@@ -3566,17 +3546,6 @@ with tab_e:
         active_alerts = [
             a for a in active_alerts
             if not ("current: 0.00" in str(a.get("message", "")) and a.get("alert_type") == "trend_degrading")
-        ]
-    if not active_alerts and not st.session_state.get("alert_ack_simulated"):
-        active_alerts = [
-            {
-                "id": "al-sec-9102",
-                "alert_type": "Memory Drift Discrepancy",
-                "severity": "minor",
-                "message": "Token expiration threshold changed across checkpoint branches.",
-                "detected_at": "2026-09-12T10:30:00Z",
-                "acknowledged": False,
-            }
         ]
 
     if active_alerts:
@@ -3740,7 +3709,7 @@ with tab_e:
         # Enrich each memory entry with computed effective confidence
         binned_mem = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
         for m in memories:
-            stored_c = float(m.get("confidence", 0.8))
+            stored_c = float(m.get("confidence", 0.0) if m.get("confidence") is not None else 0.0)
             eff_c = dx._effective_confidence(stored_c, m.get("created_at"))
             m["effective_confidence"] = eff_c
             if eff_c >= 0.8:
@@ -3778,7 +3747,7 @@ with tab_e:
         if memories:
             for i, m in enumerate(memories):
                 unique_key = hashlib.md5(f"{m.get('key', '')}_{i}_{m.get('created_at', '')}_{selected_cid}".encode()).hexdigest()[:8]
-                stored_conf = float(m.get("confidence", 0.8))
+                stored_conf = float(m.get("confidence", 0.0) if m.get("confidence") is not None else 0.0)
                 created_at_val = m.get("created_at")
                 eff_conf = dx._effective_confidence(stored_conf, created_at_val)
 
