@@ -467,31 +467,6 @@ python -c "import json; [print(f'  - {c[\"checkpoint_id\"]}: {c[\"prompt_text\"]
 | **Conflict detection rule-based fallback is polar negation** | Without Groq LLM, fallback catches explicit syntactic opposites ('use X' vs 'do not use X') rather than subtle semantics | Groq is authoritative in pipeline runs; human resolution UI allows manual overrides |
 | **Confidence decay uses `created_at` timestamp** | Memory decays from capture date because manual `last_verified_at` touchpoints are not yet automated | Re-verification UI action will bump `last_verified_at` in future iteration |
 
-### Next Steps
-
-#### Immediate (Post-Hackathon)
-
-- [ ] **Automate checkpoint export** — Git post-commit hook or GitHub Action to run `export_checkpoints_to_databricks.py` automatically
-- [ ] **Add caching layer** — Redis + `dashboard_cache` table for faster repeated queries
-- [ ] **Improve intent matching** — Groq-based semantic matching instead of token overlap
-- [ ] **Add user authentication** — Supabase Auth + RLS policies for multi-user support
-
-#### Short-Term (1-2 Months)
-
-- [ ] **CI/CD pipeline** — Automated tests on every push + deployment to cloud
-- [ ] **Dockerize** — Container image for easy deployment (`docker-compose up`)
-- [ ] **API documentation** — OpenAPI spec + user guide for developers
-- [ ] **Monitoring & logging** — Databricks SQL Analytics + structured logging
-- [ ] **Error handling** — Comprehensive try/except + user-friendly error messages
-
-#### Long-Term (3-6 Months)
-
-- [ ] **Multi-agent support** — Integrate with Cursor, Codex, Copilot (not just Entire CLI)
-- [ ] **Team features** — Shared workspaces, comments, annotations on checkpoints
-- [ ] **Advanced analytics** — Dead-end prediction, requirement prioritization, effort estimation
-- [ ] **IDE integration** — VS Code extension for in-editor checkpoint insights
-- [ ] **Mobile app** — View checkpoints and requirements on the go
-- [ ] **Enterprise features** — SSO, audit logs, compliance reporting
 
 ### Architecture Readiness
 
