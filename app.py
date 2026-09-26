@@ -2860,6 +2860,17 @@ with tab_d:
                     st.json(contract_data)
 
 
+                def _track_contract_download(c_id, itype):
+                    try:
+                        dx.record_contract_interaction(
+                            resume_contract_id=str(c_id) if c_id else None,
+                            interaction_type=itype,
+                            consumer_type="human_ui_view",
+                            section_name=itype.replace("_export", ""),
+                        )
+                    except Exception as ex:
+                        logger.debug(f"Interaction record note: {ex}")
+
                 col_d_json, col_d_md, col_d_pdf = st.columns(3)
                 with col_d_json:
                     st.download_button(
@@ -2868,6 +2879,8 @@ with tab_d:
                         file_name=f"contract_{selected_cid}_v{version_num}_{selected_template}.json",
                         mime="application/json",
                         key=f"dl_json_{version_num}_{selected_template}",
+                        on_click=_track_contract_download,
+                        args=(contract_id, "json_copy"),
                         use_container_width=True,
                     )
                 with col_d_md:
@@ -2888,6 +2901,8 @@ with tab_d:
                         file_name=f"contract_{selected_cid}_v{version_num}_{selected_template}.md",
                         mime="text/markdown",
                         key=f"dl_md_{version_num}_{selected_template}",
+                        on_click=_track_contract_download,
+                        args=(contract_id, "markdown_export"),
                         use_container_width=True,
                     )
                 with col_d_pdf:
@@ -2898,6 +2913,8 @@ with tab_d:
                         file_name=f"contract_{selected_cid}_v{version_num}_{selected_template}.pdf",
                         mime="application/pdf",
                         key=f"dl_pdf_{version_num}_{selected_template}",
+                        on_click=_track_contract_download,
+                        args=(contract_id, "pdf_export"),
                         use_container_width=True,
                     )
 
@@ -3715,19 +3732,20 @@ with tab_e:
                     st.rerun()
 
         st.markdown("**Memory Contradiction Detection**")
+        rescan_clicked = st.button("Scan Contradictions with Groq LLM (Live)", key="btn_groq_scan_contradictions")
+        if rescan_clicked:
+            with st.spinner("Analyzing memory entries with Groq LLM for semantic contradictions..."):
+                found = dx.rescan_memory_conflicts(selected_session)
+                if found:
+                    st.success(f"Groq contradiction analysis complete: {len(found)} conflict(s) discovered.")
+                else:
+                    st.info("Groq contradiction analysis complete: No contradictions found across memory entries.")
+            st.session_state.pop(f"contradiction_resolved_{selected_session}", None)
+
         try:
             active_conflicts = []
             if not st.session_state.get(f"contradiction_resolved_{selected_session}"):
                 active_conflicts = dx._detect_memory_conflicts(selected_session)
-                if not active_conflicts:
-                    active_conflicts = [
-                        {
-                            "id": "conf-jwt-ttl",
-                            "key_a": "jwt_expiry_hours",
-                            "key_b": "session_ttl_minutes",
-                            "reason": "Token expiry config (24h) contradicts short-lived session requirement (60m).",
-                        }
-                    ]
             if active_conflicts:
                 st.warning(f"{len(active_conflicts)} active contradiction(s) detected:")
                 for c in active_conflicts:
@@ -3761,14 +3779,6 @@ with tab_e:
             memories = dx.retrieve_from_agent_memory(selected_session)
         except Exception as e:
             memories = []
-
-        if not memories:
-            memories = [
-                {"key": "auth_token_strategy", "value": "Stateless JWT tokens signed with HS256 and Redis blacklisting for revocations", "confidence": 0.95, "created_at": "2026-09-12T08:00:00Z"},
-                {"key": "db_connection_pool", "value": "Max pool size 20 with exponential retry backoff and connection eviction", "confidence": 0.90, "created_at": "2026-09-11T14:30:00Z"},
-                {"key": "delta_lake_schema", "value": "Catalog checkpoint_dx with strict schema evolution and parquet format", "confidence": 0.88, "created_at": "2026-09-10T11:00:00Z"},
-                {"key": "csrf_cookie_policy", "value": "Double-submit cookie verification enabled with SameSite=Lax", "confidence": 0.82, "created_at": "2026-09-08T16:00:00Z"},
-            ]
 
         # Enrich each memory entry with computed effective confidence
         binned_mem = {"Fresh (>0.8)": 0, "Medium (0.5-0.8)": 0, "Marginal (0.3-0.5)": 0, "Decayed (<0.3)": 0}
