@@ -2,6 +2,7 @@
 # 5-Panel Interface covering Features A, B, C, D, and E.
 import os
 import math
+import html
 import streamlit as st
 import json
 import hashlib
@@ -318,10 +319,13 @@ st.sidebar.markdown("""
 
 if is_authenticated:
     u = st.session_state["current_user"]
+    safe_name = html.escape(str(u.get('name', 'Developer')))
+    safe_role = html.escape(str(u.get('role', 'DEV')))
+    safe_email = html.escape(str(u.get('email', '')))
     st.sidebar.markdown(f"""
     <div style="background:rgba(0,113,227,0.06);border:1px solid rgba(0,113,227,0.2);border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
-      <div style="font-weight:700;color:#0071E3;margin-bottom:2px;">{u.get('name', 'Developer')} ({u.get('role', 'DEV')})</div>
-      <div style="color:#595959;font-size:11px;">{u.get('email', '')}</div>
+      <div style="font-weight:700;color:#0071E3;margin-bottom:2px;">{safe_name} ({safe_role})</div>
+      <div style="color:#595959;font-size:11px;">{safe_email}</div>
     </div>
     """, unsafe_allow_html=True)
     c_s_land, c_s_out = st.sidebar.columns(2)
@@ -858,7 +862,9 @@ with tab_a:
             # Plain Language Reasoning Callout with Pill Badges
             reasoning_text = conf.get("plain_reasoning", "")
             badge_cls = "badge-pill-danger" if ("[CRITICAL]" in risk_lvl or "[HIGH RISK]" in risk_lvl) else ("badge-pill-warning" if "[MODERATE RISK]" in risk_lvl else "badge-pill-success")
-            st.markdown(f'<div style="margin-bottom:12px;"><span class="badge-pill {badge_cls}">{risk_lvl}</span> <strong>Evaluation:</strong> {reasoning_text}</div>', unsafe_allow_html=True)
+            safe_risk = html.escape(str(risk_lvl))
+            safe_reasoning = html.escape(str(reasoning_text))
+            st.markdown(f'<div style="margin-bottom:12px;"><span class="badge-pill {badge_cls}">{safe_risk}</span> <strong>Evaluation:</strong> {safe_reasoning}</div>', unsafe_allow_html=True)
 
             # Ranked Recommendations
             ranked_recs = last_res.get("ranked_recommendations", [])
