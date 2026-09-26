@@ -1,4 +1,4 @@
-# app.py — Checkpoint-Native DX (v9) Interactive Dashboard
+# app.py — Checkpoint-Native DX Interactive Dashboard
 # 5-Panel Interface covering Features A, B, C, D, and E.
 import os
 import math
@@ -459,7 +459,7 @@ except Exception:
 cb = _global_analytics.get("consumer_breakdown", {"human_ui_view": 142, "api_fetch": 86, "agent_session": 58})
 eng = _global_analytics.get("engagement", {"avg_view_duration_seconds": 185.0, "avg_scroll_depth_pct": 78.5, "pdf_exports": 8, "markdown_exports": 12, "json_copies": 15})
 
-st.title("Checkpoint-Native DX (v9)")
+st.title("Checkpoint-Native DX")
 st.caption("Enterprise developer experience bridging git/Entire checkpoints into Databricks Delta, Unity Catalog, and Supabase.")
 
 # ==============================================================================

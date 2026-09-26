@@ -1,5 +1,5 @@
 """lib/checkpoint_dx.py
-Checkpoint-Native DX Core Python Library (v9)
+Checkpoint-Native DX Core Python Library
 Includes implementations for Features A, B, C, D, and E.
 """
 import json
