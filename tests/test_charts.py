@@ -125,11 +125,24 @@ class TestChartsEngine(unittest.TestCase):
         self.assertEqual(fig_bar.data[0].type, "bar")
 
     def test_render_contract_funnel_chart(self):
-        fig = lc.render_contract_funnel_chart()
+        sample_funnel = {
+            "steps": [
+                {"step": "Contract Created", "count": 286},
+                {"step": "Schema Validated", "count": 262},
+                {"step": "Agent Consumed", "count": 235},
+                {"step": "Resumption Succeeded", "count": 218},
+            ]
+        }
+        fig = lc.render_contract_funnel_chart(sample_funnel)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].type, "funnel")
         # Ensure drop-off annotations are present
         self.assertGreaterEqual(len(fig.layout.annotations), 3)
+
+        # Negative case: empty data returns empty chart state
+        empty_fig = lc.render_contract_funnel_chart(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("CONTRACT CONSUMPTION FUNNEL", empty_fig.layout.annotations[0].text.upper())
 
     def test_render_semantic_diff_bars(self):
         diff_data = {"Added Reqs": 2, "Resolved Dead-Ends": -1, "Integrity Delta": 5.0}
@@ -137,22 +150,55 @@ class TestChartsEngine(unittest.TestCase):
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.data[0].y), 3)
 
+        # Negative case
+        empty_fig = lc.render_semantic_diff_bars(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("CONTRACT SEMANTIC DIFF", empty_fig.layout.annotations[0].text.upper())
+
     def test_render_contract_version_timeline(self):
-        fig = lc.render_contract_version_timeline()
+        versions = [
+            {"version": "v1.0", "label": "Initial Baseline", "status": "[SUPERSEDED]", "integrity": 82.0, "time": "Day -5"},
+            {"version": "v2.0", "label": "Signed Handoff", "status": "[ACTIVE/CURRENT]", "integrity": 88.5, "time": "Day -1"},
+        ]
+        fig = lc.render_contract_version_timeline(versions)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].mode, "lines+markers+text")
 
+        # Negative case
+        empty_fig = lc.render_contract_version_timeline(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("CONTRACT VERSION TIMELINE", empty_fig.layout.annotations[0].text.upper())
+
     # Feature 2 Requirement Ledger
     def test_render_sprint_burndown_variance_chart(self):
-        fig = lc.render_sprint_burndown_variance_chart()
+        sample_burndown = {
+            "days": ["Day 1", "Day 2", "Day 3"],
+            "ideal": [25.0, 15.0, 0.0],
+            "actual": [25.0, 18.0, 5.0],
+        }
+        fig = lc.render_sprint_burndown_variance_chart(sample_burndown)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(len(fig.data), 2)
         self.assertEqual(fig.data[1].fill, "tozeroy")
 
+        # Negative case
+        empty_fig = lc.render_sprint_burndown_variance_chart(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("SPRINT VELOCITY", empty_fig.layout.annotations[0].text.upper())
+
     def test_render_priority_vs_effort_scatter(self):
-        fig = lc.render_priority_vs_effort_scatter()
+        sample_reqs = [
+            {"id": "r1", "requirement_text": "OAuth2 Token Expiry", "story_points": 3, "priority_tier": "P0"},
+            {"id": "r2", "requirement_text": "TOTP MFA", "story_points": 5, "priority_tier": "P1"},
+        ]
+        fig = lc.render_priority_vs_effort_scatter(sample_reqs)
         self.assertIsInstance(fig, go.Figure)
-        self.assertGreaterEqual(len(fig.layout.annotations), 2)
+        self.assertGreaterEqual(len(fig.layout.annotations), 1)
+
+        # Negative case
+        empty_fig = lc.render_priority_vs_effort_scatter(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("EFFORT VS DYNAMIC PRIORITY", empty_fig.layout.annotations[0].text.upper())
 
     def test_render_requirement_lifecycle_stacked_bar(self):
         reqs = [{"status": "done"}, {"status": "in_progress"}, {"status": "blocked"}]
@@ -161,9 +207,18 @@ class TestChartsEngine(unittest.TestCase):
         self.assertEqual(fig.layout.barmode, "stack")
 
     def test_render_requirement_aging_heatmap(self):
-        fig = lc.render_requirement_aging_heatmap()
+        sample_reqs = [
+            {"id": "REQ-001", "title": "OAuth2 Expiry", "days": 4, "status": "In Progress"},
+            {"id": "REQ-002", "title": "TOTP MFA", "days": 9, "status": "Ready"},
+        ]
+        fig = lc.render_requirement_aging_heatmap(sample_reqs)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].type, "bar")
+
+        # Negative case
+        empty_fig = lc.render_requirement_aging_heatmap(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("REQUIREMENT AGING", empty_fig.layout.annotations[0].text.upper())
 
     # Feature 1 Dead-End Registry
     def test_render_fix_success_gauge(self):
@@ -172,14 +227,32 @@ class TestChartsEngine(unittest.TestCase):
         self.assertEqual(fig.data[0].type, "indicator")
 
     def test_render_root_cause_ranked_bar(self):
-        fig = lc.render_root_cause_ranked_bar()
+        sample_des = [
+            {"root_cause": "Token refresh race condition", "dead_end_type": "logic_error"},
+            {"root_cause": "Warehouse cold start timeout", "dead_end_type": "timeout"},
+        ]
+        fig = lc.render_root_cause_ranked_bar(sample_des)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].type, "bar")
 
+        # Negative case
+        empty_fig = lc.render_root_cause_ranked_bar(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("RANKED FAILURE ROOT CAUSES", empty_fig.layout.annotations[0].text.upper())
+
     def test_render_dead_end_timeline_strip(self):
-        fig = lc.render_dead_end_timeline_strip()
+        sample_des = [
+            {"checkpoint_id": "chk-001", "dead_end_type": "timeout"},
+            {"checkpoint_id": "chk-002", "dead_end_type": "logic_error"},
+        ]
+        fig = lc.render_dead_end_timeline_strip(sample_des)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].type, "scatter")
+
+        # Negative case
+        empty_fig = lc.render_dead_end_timeline_strip(None)
+        self.assertEqual(len(empty_fig.data), 0)
+        self.assertIn("DEAD-END OCCURRENCE DENSITY STRIP", empty_fig.layout.annotations[0].text.upper())
 
     # Master UI/UX Components
     def test_range_bar_html(self):
@@ -262,7 +335,13 @@ class TestChartsEngine(unittest.TestCase):
         self.assertFalse(guard_short["prefer_horizontal"])
 
         # Render severity bar with long categories -> horizontal stacked bar with zero collisions
-        fig = lc.render_severity_distribution_bar()
+        sample_des = [
+            {"dead_end_type": "Resource Exhaustion", "severity": "critical"},
+            {"dead_end_type": "Schema Mismatch", "severity": "major"},
+            {"dead_end_type": "Agent Logic Error", "severity": "minor"},
+            {"dead_end_type": "Auth Timeout", "severity": "major"},
+        ]
+        fig = lc.render_severity_distribution_bar(sample_des)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].orientation, "h")
 
@@ -284,7 +363,12 @@ class TestChartsEngine(unittest.TestCase):
         self.assertIn("↑2 vs last checkpoint", lc.format_delta_label(2))
         self.assertIn("↓1 vs last checkpoint", lc.format_delta_label(-1))
 
-        fig = lc.render_root_cause_ranked_bar()
+        sample_des = [
+            {"root_cause": "Token refresh race condition", "dead_end_type": "logic_error"},
+            {"root_cause": "Warehouse cold start timeout", "dead_end_type": "timeout"},
+            {"root_cause": "Warehouse cold start timeout", "dead_end_type": "timeout"},
+        ]
+        fig = lc.render_root_cause_ranked_bar(sample_des)
         self.assertIsInstance(fig, go.Figure)
         # Verify labeled deltas in y categories
         y_labels = list(fig.data[0].y)
@@ -365,7 +449,11 @@ class TestChartsEngine(unittest.TestCase):
 
     def test_requirement_aging_horizontal_and_stale_threshold(self):
         """Prompt v3 Part A: Requirement aging must be horizontal bars with explicit 14-day threshold."""
-        fig = lc.render_requirement_aging_heatmap()
+        sample_reqs = [
+            {"id": "REQ-001", "title": "OAuth2 Expiry", "days": 4, "status": "In Progress"},
+            {"id": "REQ-002", "title": "TOTP MFA", "days": 9, "status": "Ready"},
+        ]
+        fig = lc.render_requirement_aging_heatmap(sample_reqs)
         self.assertIsInstance(fig, go.Figure)
         self.assertEqual(fig.data[0].orientation, "h")
         # Explicit 14-day threshold line
@@ -426,28 +514,28 @@ class TestChartsEngine(unittest.TestCase):
     def test_universal_center_label_pattern(self):
         """Prompt v3 Part B: Verify bold primary metric and muted uppercase context label in donut centers."""
         # Dead-end donut
-        de_donut = lc.render_dead_end_type_donut()
+        de_donut = lc.render_dead_end_type_donut([{"dead_end_type": "logic_error"}])
         center_text = de_donut.layout.annotations[0].text
         self.assertIn("TOTAL DEAD-ENDS", center_text)
         self.assertIn("<b style=", center_text)
 
         # Consumer channel donut
-        cc_donut = lc.render_consumer_channel_donut()
+        cc_donut = lc.render_consumer_channel_donut({"human_ui_view": 10})
         center_text_cc = cc_donut.layout.annotations[0].text
         self.assertIn("TOTAL LOADS", center_text_cc)
 
         # Memory donut
-        mem_donut = lc.render_memory_confidence_donut()
+        mem_donut = lc.render_memory_confidence_donut([{"confidence": 0.85}])
         center_text_mem = mem_donut.layout.annotations[0].text
         self.assertIn("AVG CONFIDENCE", center_text_mem)
 
         # Domain donut
-        dom_donut = lc.render_domain_conformance_donut()
+        dom_donut = lc.render_domain_conformance_donut({"auth": 90.0})
         center_text_dom = dom_donut.layout.annotations[0].text
         self.assertIn("AVG CONFORMANCE", center_text_dom)
 
         # Clause donut
-        clause_donut = lc.render_clause_distribution_donut()
+        clause_donut = lc.render_clause_distribution_donut([{"conformance_status": "Fully Met"}])
         center_text_clause = clause_donut.layout.annotations[0].text
         self.assertIn("CLAUSES AUDITED", center_text_clause)
 
@@ -470,25 +558,36 @@ class TestChartsEngine(unittest.TestCase):
         self.assertIn("\u2022", bot_ann_conf.text)
 
         # 3. Severity bar legend at top right
-        sev_fig = lc.render_severity_distribution_bar()
+        sample_des = [
+            {"dead_end_type": "Resource Exhaustion", "severity": "critical"},
+            {"dead_end_type": "Schema Mismatch", "severity": "major"},
+            {"dead_end_type": "Agent Logic Error", "severity": "minor"},
+            {"dead_end_type": "Auth Timeout", "severity": "major"},
+        ]
+        sev_fig = lc.render_severity_distribution_bar(sample_des)
         self.assertGreaterEqual(sev_fig.layout.legend.y, 1.0)
         self.assertTrue(sev_fig.layout.xaxis.automargin)
         self.assertTrue(sev_fig.layout.yaxis.automargin)
 
         # 4. Root cause ranked bar margin and automargin
-        rc_fig = lc.render_root_cause_ranked_bar()
+        sample_rc = [
+            {"root_cause": "Token refresh race condition", "dead_end_type": "logic_error"},
+            {"root_cause": "Warehouse cold start timeout", "dead_end_type": "timeout"},
+        ]
+        rc_fig = lc.render_root_cause_ranked_bar(sample_rc)
         self.assertTrue(rc_fig.layout.xaxis.automargin)
         self.assertTrue(rc_fig.layout.yaxis.automargin)
         self.assertGreaterEqual(rc_fig.layout.margin.b, 40)
 
         # 5. Requirement and memory stacked bars zero-overlap legend & margins
-        req_fig = lc.render_requirement_lifecycle_stacked_bar()
+        sample_reqs = [{"status": "done"}, {"status": "in_progress"}, {"status": "blocked"}]
+        req_fig = lc.render_requirement_lifecycle_stacked_bar(sample_reqs)
         self.assertTrue(req_fig.layout.showlegend)
         self.assertFalse(req_fig.layout.xaxis.visible)
         self.assertLessEqual(req_fig.layout.legend.y, 0.0)
         self.assertGreaterEqual(req_fig.layout.margin.b, 40)
 
-        mem_fig = lc.render_memory_confidence_battery()
+        mem_fig = lc.render_memory_confidence_battery({"Fresh (>0.8)": 3, "Decayed (<0.3)": 1})
         self.assertTrue(mem_fig.layout.showlegend)
         self.assertFalse(mem_fig.layout.xaxis.visible)
         self.assertLessEqual(mem_fig.layout.legend.y, 0.0)

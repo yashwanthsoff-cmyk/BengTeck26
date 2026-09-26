@@ -201,9 +201,6 @@ def normalize_requirement_counts(requirements: Optional[List[Dict]] = None) -> D
                 counts["Superseded"] += 1
             else:
                 counts["Ready"] += 1
-    else:
-        # Reconciled default sample distribution (9 total items across 5 statuses)
-        counts = {"Done": 2, "In Progress": 3, "Blocked": 1, "Ready": 2, "Superseded": 1}
     return counts
 
 
@@ -535,7 +532,10 @@ def render_dead_end_type_donut(dead_ends: Optional[List[Dict]] = None) -> go.Fig
         counts[t] = counts.get(t, 0) + 1
 
     if not counts:
-        counts = {"Logic Error": 2, "Timeout": 1, "Resource Exhaustion": 1, "Schema Mismatch": 1}
+        return render_empty_chart_state(
+            title="Dead-End Type Distribution",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
 
     labels = list(counts.keys())
     values = list(counts.values())
@@ -561,7 +561,10 @@ def render_dead_end_radial_gauges(dead_ends: Optional[List[Dict]] = None) -> go.
         counts[t] = counts.get(t, 0) + 1
 
     if not counts:
-        counts = {"Logic Error": 2, "Timeout": 1, "Resource Exhaustion": 1, "Schema Mismatch": 1}
+        return render_empty_chart_state(
+            title="Dead-End Radial Gauges",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
 
     types = list(counts.keys())[:4]
     total = sum(counts.values()) or 1
@@ -607,7 +610,10 @@ def render_dead_end_horizontal_bars(dead_ends: Optional[List[Dict]] = None) -> g
         counts[t] = counts.get(t, 0) + 1
 
     if not counts:
-        counts = {"Logic Error": 2, "Timeout": 1, "Resource Exhaustion": 1, "Schema Mismatch": 1}
+        return render_empty_chart_state(
+            title="Dead-End Type Distribution",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
 
     sorted_items = sorted(counts.items(), key=lambda x: x[1], reverse=True)
     types = [item[0] for item in sorted_items]
@@ -641,7 +647,7 @@ def render_dead_end_ranked_list(dead_ends: Optional[List[Dict]] = None) -> str:
         counts[t] = counts.get(t, 0) + 1
 
     if not counts:
-        counts = {"Logic Error": 2, "Timeout": 1, "Resource Exhaustion": 1, "Schema Mismatch": 1}
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No dead-end incidents recorded for this checkpoint</div>"
 
     total = sum(counts.values()) or 1
     color_map = [COLORS["danger"], COLORS["warning"], COLORS["primary"], COLORS["neutral"]]
@@ -676,31 +682,29 @@ def render_root_cause_ranked_bar(dead_ends: Optional[List[Dict]] = None) -> go.F
     Per Master Rule #5: Bracketed annotations are explicit labeled deltas ('no change', '↓1 vs last checkpoint', '↑2 vs last checkpoint').
     Per Master Rule #6: Dynamic pluralization ('1 event' vs '2 events').
     """
-    if dead_ends:
-        rc_counts: Dict[str, int] = {}
-        for d in dead_ends:
-            rc = str(d.get("root_cause") or "Unknown Failure").strip()
-            rc_counts[rc] = rc_counts.get(rc, 0) + 1
-        
-        sorted_rc = sorted(rc_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-        sim_deltas = [2, 0, -1, 0, 1]
-        items = []
-        for idx, (rc, cnt) in enumerate(sorted_rc):
-            delta = sim_deltas[idx % len(sim_deltas)]
-            trend = "worsening" if delta > 0 else ("improving" if delta < 0 else "stable")
-            clean_rc = (rc[:38] + "..") if len(rc) > 40 else rc
-            items.append({
-                "Root Cause": f"{clean_rc} {format_delta_label(delta)}",
-                "Incidents": cnt,
-                "Trend": trend,
-            })
-    else:
-        items = [
-            {"Root Cause": f"Token refresh race condition {format_delta_label(2)}", "Incidents": 4, "Trend": "worsening"},
-            {"Root Cause": f"Warehouse cold start timeout {format_delta_label(0)}", "Incidents": 2, "Trend": "stable"},
-            {"Root Cause": f"Unpartitioned delta lake OOM {format_delta_label(-1)}", "Incidents": 2, "Trend": "improving"},
-            {"Root Cause": f"Missing telemetry schema version {format_delta_label(0)}", "Incidents": 1, "Trend": "stable"},
-        ]
+    if not dead_ends:
+        return render_empty_chart_state(
+            title="Ranked Failure Root Causes",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
+
+    rc_counts: Dict[str, int] = {}
+    for d in dead_ends:
+        rc = str(d.get("root_cause") or "Unknown Failure").strip()
+        rc_counts[rc] = rc_counts.get(rc, 0) + 1
+    
+    sorted_rc = sorted(rc_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    sim_deltas = [2, 0, -1, 0, 1]
+    items = []
+    for idx, (rc, cnt) in enumerate(sorted_rc):
+        delta = sim_deltas[idx % len(sim_deltas)]
+        trend = "worsening" if delta > 0 else ("improving" if delta < 0 else "stable")
+        clean_rc = (rc[:38] + "..") if len(rc) > 40 else rc
+        items.append({
+            "Root Cause": f"{clean_rc} {format_delta_label(delta)}",
+            "Incidents": cnt,
+            "Trend": trend,
+        })
 
     df = pd.DataFrame(items).sort_values("Incidents", ascending=True)
     colors = [COLORS["danger"] if t == "worsening" else (COLORS["warning"] if t == "stable" else COLORS["success"]) for t in df["Trend"]]
@@ -731,26 +735,26 @@ def render_severity_distribution_bar(dead_ends: Optional[List[Dict]] = None) -> 
     Switches to horizontal stacked bars or 45-degree rotation to guarantee
     zero text collisions across failure types on any viewport width.
     """
-    if dead_ends:
-        type_sev: Dict[str, Dict[str, int]] = {}
-        for d in dead_ends:
-            dt = str(d.get("dead_end_type") or "Unknown").strip()
-            sev = str(d.get("severity") or "minor").lower().strip()
-            if sev not in ("critical", "major", "minor"):
-                sev = "minor"
-            if dt not in type_sev:
-                type_sev[dt] = {"critical": 0, "major": 0, "minor": 0}
-            type_sev[dt][sev] += 1
-        
-        categories = list(type_sev.keys())
-        critical_counts = [type_sev[c]["critical"] for c in categories]
-        major_counts = [type_sev[c]["major"] for c in categories]
-        minor_counts = [type_sev[c]["minor"] for c in categories]
-    else:
-        categories = ["Resource Exhaustion", "Schema Mismatch", "Agent Logic Error", "Auth Timeout"]
-        critical_counts = [2, 1, 1, 0]
-        major_counts = [1, 2, 0, 2]
-        minor_counts = [0, 1, 1, 0]
+    if not dead_ends:
+        return render_empty_chart_state(
+            title="Severity Distribution by Failure Type",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
+
+    type_sev: Dict[str, Dict[str, int]] = {}
+    for d in dead_ends:
+        dt = str(d.get("dead_end_type") or "Unknown").strip()
+        sev = str(d.get("severity") or "minor").lower().strip()
+        if sev not in ("critical", "major", "minor"):
+            sev = "minor"
+        if dt not in type_sev:
+            type_sev[dt] = {"critical": 0, "major": 0, "minor": 0}
+        type_sev[dt][sev] += 1
+    
+    categories = list(type_sev.keys())
+    critical_counts = [type_sev[c]["critical"] for c in categories]
+    major_counts = [type_sev[c]["major"] for c in categories]
+    minor_counts = [type_sev[c]["minor"] for c in categories]
 
     # Runtime category collision check
     axis_guard = check_axis_label_collision(categories)
@@ -878,13 +882,21 @@ def render_fix_success_gauge(success_rate: float = 0.667, target_rate: float = 7
 
 def render_dead_end_timeline_strip(dead_ends: Optional[List[Dict]] = None) -> go.Figure:
     """Timeline frequency strip of dead-end occurrences across checkpoints."""
-    events = [
-        {"Checkpoint": "chk-001", "Failures": 3, "Category": "Auth Timeout"},
-        {"Checkpoint": "chk-002", "Failures": 2, "Category": "Warehouse Cold Start"},
-        {"Checkpoint": "chk-003", "Failures": 4, "Category": "Delta Lake OOM"},
-        {"Checkpoint": "chk-004", "Failures": 1, "Category": "Schema Gap"},
-        {"Checkpoint": "chk-005", "Failures": 2, "Category": "Token Race Condition"},
-    ]
+    if not dead_ends:
+        return render_empty_chart_state(
+            title="Dead-End Occurrence Density Strip",
+            reason="No dead-end incidents recorded for this checkpoint",
+        )
+
+    cp_counts = {}
+    cp_cat = {}
+    for d in dead_ends:
+        cp = str(d.get("checkpoint_id") or d.get("checkpoint") or "Current").strip()
+        cat = str(d.get("dead_end_type") or d.get("category") or "General Incident").replace("_", " ").title()
+        cp_counts[cp] = cp_counts.get(cp, 0) + 1
+        cp_cat[cp] = cat
+
+    events = [{"Checkpoint": cp, "Failures": cnt, "Category": cp_cat[cp]} for cp, cnt in cp_counts.items()]
     df = pd.DataFrame(events)
 
     fig = go.Figure()
@@ -919,6 +931,13 @@ def render_requirement_status_donut(requirements: Optional[List[Dict]] = None) -
     labels = ["Done", "In Progress", "Blocked", "Ready", "Superseded"]
     values = [counts[k] for k in labels]
     
+    total = sum(values)
+    if total == 0:
+        return render_empty_chart_state(
+            title="Requirement Status Breakdown",
+            reason="No requirements recorded for this checkpoint",
+        )
+
     # 1:1 color mapping matching stacked bar
     status_colors = [
         COLORS["success"],  # Done
@@ -928,7 +947,6 @@ def render_requirement_status_donut(requirements: Optional[List[Dict]] = None) -
         COLORS["neutral"],  # Superseded
     ]
 
-    total = sum(values)
     done_val = counts["Done"]
 
     return render_donut_paired_center(
@@ -944,13 +962,23 @@ def render_requirement_status_donut(requirements: Optional[List[Dict]] = None) -
 
 def render_priority_vs_effort_scatter(requirements: Optional[List[Dict]] = None) -> go.Figure:
     """Effort vs Priority Matrix with direct top-item callout annotations."""
-    data = [
-        {"Title": "OAuth2 Token Expiry", "Points": 3, "Priority Score": 92.0, "Tier": "P0", "Impact": 9},
-        {"Title": "TOTP Multi-Factor Auth", "Points": 5, "Priority Score": 84.5, "Tier": "P1", "Impact": 8},
-        {"Title": "CSRF Double-Submit Guard", "Points": 3, "Priority Score": 78.0, "Tier": "P1", "Impact": 7},
-        {"Title": "Session Snapshot Archival", "Points": 2, "Priority Score": 62.0, "Tier": "P2", "Impact": 5},
-        {"Title": "UI Button Padding Tweaks", "Points": 1, "Priority Score": 35.0, "Tier": "P2", "Impact": 2},
-    ]
+    if not requirements:
+        return render_empty_chart_state(
+            title="Effort vs Dynamic Priority Matrix",
+            reason="No requirements recorded for this checkpoint",
+        )
+
+    data = []
+    for r in requirements:
+        title = str(r.get("requirement_text") or r.get("title") or r.get("id") or "Requirement")[:30]
+        points = float(r.get("story_points") or r.get("effort_points") or 1.0)
+        tier = str(r.get("priority_tier") or (f"P{r.get('priority', 2)}" if r.get("priority") is not None else "P2")).upper()
+        if "P0" not in tier and "P1" not in tier and "P2" not in tier:
+            tier = "P2"
+        priority_score = float(r.get("dynamic_priority_score") or r.get("priority_score") or (90.0 if "P0" in tier else (75.0 if "P1" in tier else 50.0)))
+        impact = int(r.get("impact") or (9 if "P0" in tier else (7 if "P1" in tier else 4)))
+        data.append({"Title": title, "Points": points, "Priority Score": priority_score, "Tier": tier, "Impact": impact})
+
     df = pd.DataFrame(data)
     color_map = {"P0": COLORS["danger"], "P1": COLORS["primary"], "P2": COLORS["neutral"]}
 
@@ -965,72 +993,72 @@ def render_priority_vs_effort_scatter(requirements: Optional[List[Dict]] = None)
         size_max=22,
     )
 
-    # Direct Top Item Callout Annotations
-    fig.add_annotation(
-        x=3,
-        y=92.0,
-        text="<b>P0: OAuth2 Token Expiry</b>",
-        showarrow=True,
-        arrowhead=2,
-        ax=70,
-        ay=-20,
-        bgcolor="#FEE2E2",
-        bordercolor=COLORS["danger"],
-        borderwidth=1,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
-    )
-    fig.add_annotation(
-        x=5,
-        y=84.5,
-        text="<b>P1: TOTP Multi-Factor</b>",
-        showarrow=True,
-        arrowhead=2,
-        ax=-70,
-        ay=-20,
-        bgcolor="#EFF6FF",
-        bordercolor=COLORS["primary"],
-        borderwidth=1,
-        font=dict(family=FONT_FAMILY, size=10, color=COLORS["primary"]),
-    )
+    # Direct Top Item Callout Annotations for top priority item
+    p0_items = [d for d in data if d["Tier"] == "P0"]
+    if p0_items:
+        top_p0 = p0_items[0]
+        fig.add_annotation(
+            x=top_p0["Points"],
+            y=top_p0["Priority Score"],
+            text=f"<b>P0: {top_p0['Title']}</b>",
+            showarrow=True,
+            arrowhead=2,
+            ax=70,
+            ay=-20,
+            bgcolor="#FEE2E2",
+            bordercolor=COLORS["danger"],
+            borderwidth=1,
+            font=dict(family=FONT_FAMILY, size=10, color=COLORS["danger"]),
+        )
 
     fig.update_xaxes(title_text="Story Points (Fibonacci Effort)", showgrid=True)
-    fig.update_yaxes(title_text="Dynamic Priority Score (0-100)", range=[20, 105], showgrid=True)
+    fig.update_yaxes(title_text="Dynamic Priority Score (0-100)", range=[0, 105], showgrid=True)
     return _apply_layout_defaults(fig, "Effort vs Dynamic Priority Matrix with Top-Item Callouts", height=320)
 
 
-def render_sprint_burndown_chart() -> go.Figure:
+def render_sprint_burndown_chart(burndown_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Sprint velocity and burndown trajectory with variance pace envelope."""
-    return render_sprint_burndown_variance_chart()
+    return render_sprint_burndown_variance_chart(burndown_data)
 
 
 def get_sprint_burndown_variance(burndown_data: Optional[Dict[str, Any]] = None, current_day_idx: int = 6) -> float:
     """Calculates actual vs. ideal burndown pace variance directly from the burndown series."""
-    ideal = (burndown_data.get("ideal") if isinstance(burndown_data, dict) else None) or [25.0, 22.5, 20.0, 17.5, 15.0, 12.5, 10.0, 7.5, 5.0, 0.0]
-    actual = (burndown_data.get("actual") if isinstance(burndown_data, dict) else None) or [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]
+    if not burndown_data or not isinstance(burndown_data, dict):
+        return 0.0
+    ideal = burndown_data.get("ideal") or []
+    actual = burndown_data.get("actual") or []
+    if not ideal or not actual:
+        return 0.0
     idx = min(current_day_idx, len(ideal) - 1, len(actual) - 1)
     return round(float(actual[idx] - ideal[idx]), 1)
 
 
 def render_sprint_burndown_variance_chart(burndown_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Annotated Line Chart: actual burndown gets subtle gradient fill, ideal is dashed reference line with inline label."""
-    days = (burndown_data.get("days") if isinstance(burndown_data, dict) else None) or ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10"]
-    ideal = (burndown_data.get("ideal") if isinstance(burndown_data, dict) else None) or [25.0, 22.5, 20.0, 17.5, 15.0, 12.5, 10.0, 7.5, 5.0, 0.0]
-    actual = (burndown_data.get("actual") if isinstance(burndown_data, dict) else None) or [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]
-    pace_variance = get_sprint_burndown_variance(burndown_data, current_day_idx=6)
+    if not burndown_data or not isinstance(burndown_data, dict) or not burndown_data.get("actual"):
+        return render_empty_chart_state(
+            title="Sprint Velocity & Burndown Trajectory",
+            reason="No sprint burndown telemetry recorded",
+        )
+    days = burndown_data.get("days", [f"Day {i+1}" for i in range(len(burndown_data.get("actual", [])))])
+    ideal = burndown_data.get("ideal", [])
+    actual = burndown_data.get("actual", [])
+    pace_variance = get_sprint_burndown_variance(burndown_data, current_day_idx=min(6, len(actual) - 1))
     pace_str = "Ahead of Pace" if pace_variance <= 0 else "Behind Pace"
 
     fig = go.Figure()
 
     # Ideal burndown dashed reference line with inline annotation
-    fig.add_trace(
-        go.Scatter(
-            x=days,
-            y=ideal,
-            mode="lines",
-            line=dict(color=COLORS["neutral"], dash="dash", width=2),
-            name="Ideal Burndown",
+    if ideal:
+        fig.add_trace(
+            go.Scatter(
+                x=days[:len(ideal)],
+                y=ideal,
+                mode="lines",
+                line=dict(color=COLORS["neutral"], dash="dash", width=2),
+                name="Ideal Burndown",
+            )
         )
-    )
 
     # Actual burndown with subtle gradient fill
     fig.add_trace(
@@ -1141,23 +1169,20 @@ def render_requirement_aging_heatmap(requirements: Optional[List[Dict]] = None) 
     and mobile (600px). Vertical threshold line at 14 days marks stale aging threshold
     with an explicit callout label.
     """
-    if requirements:
-        req_aging = []
-        for r in requirements:
-            rid = str(r.get("id", "REQ"))[:8].upper()
-            title = str(r.get("title") or r.get("requirement_text") or "Requirement")[:24]
-            days = int(r.get("age_days", r.get("days", 5)))
-            st = str(r.get("status", "Ready")).title()
-            req_aging.append({"ID": rid, "Title": title, "Days": days, "Status": st})
-        df = pd.DataFrame(req_aging) if req_aging else pd.DataFrame([{"ID": "REQ-001", "Title": "Baseline", "Days": 4, "Status": "In Progress"}])
-    else:
-        req_aging = [
-            {"ID": "REQ-001", "Title": "OAuth2 Expiry", "Days": 4, "Status": "In Progress"},
-            {"ID": "REQ-002", "Title": "TOTP MFA", "Days": 9, "Status": "Ready"},
-            {"ID": "REQ-003", "Title": "CSRF Guard", "Days": 16, "Status": "Blocked"},
-            {"ID": "REQ-004", "Title": "Snapshot Archival", "Days": 2, "Status": "Done"},
-        ]
-        df = pd.DataFrame(req_aging)
+    if not requirements:
+        return render_empty_chart_state(
+            title="Requirement Aging & Stale Risk Monitor",
+            reason="No requirements recorded for this checkpoint",
+        )
+
+    req_aging = []
+    for r in requirements:
+        rid = str(r.get("id", "REQ"))[:8].upper()
+        title = str(r.get("title") or r.get("requirement_text") or "Requirement")[:24]
+        days = int(r.get("age_days", r.get("days", 5)))
+        st = str(r.get("status", "Ready")).title()
+        req_aging.append({"ID": rid, "Title": title, "Days": days, "Status": st})
+    df = pd.DataFrame(req_aging)
 
     colors = [
         COLORS["danger"] if d > 14 or s == "Blocked"
@@ -1300,12 +1325,11 @@ def render_intent_conformance_gauge(
 
 def render_intent_domain_bars(domain_data: Optional[Dict[str, float]] = None) -> go.Figure:
     """Horizontal domain conformance rate bars."""
-    if domain_data:
-        domains = list(domain_data.keys())
-        scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
-    else:
-        domains = ["Security", "UI/UX", "Functional", "Governance", "Performance"]
-        scores = [92.0, 95.0, 88.0, 78.0, 68.0]
+    if not domain_data:
+        return render_empty_chart_state("Domain Conformance Rates", "No domain conformance telemetry recorded")
+
+    domains = list(domain_data.keys())
+    scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
     bar_colors = [COLORS["success"] if s >= 85 else (COLORS["warning"] if s >= 75 else COLORS["danger"]) for s in scores]
 
     fig = go.Figure(
@@ -1327,15 +1351,14 @@ def render_intent_domain_bars(domain_data: Optional[Dict[str, float]] = None) ->
 
 def render_domain_conformance_donut(domain_data: Optional[Dict[str, float]] = None) -> go.Figure:
     """Domain Cluster Conformance Donut with top domain in center."""
-    if domain_data:
-        domains = list(domain_data.keys())
-        scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
-    else:
-        domains = ["Security", "UI/UX", "Functional", "Governance", "Performance"]
-        scores = [92.0, 95.0, 88.0, 78.0, 68.0]
+    if not domain_data:
+        return render_empty_chart_state("Domain Conformance Distribution", "No domain conformance telemetry recorded")
+
+    domains = list(domain_data.keys())
+    scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
 
     colors = [COLORS["success"], "#34D399", COLORS["primary"], COLORS["warning"], COLORS["danger"]]
-    mean_score = sum(scores) / len(scores) if scores else 84.6
+    mean_score = sum(scores) / len(scores) if scores else 0.0
     return render_donut_paired_center(
         labels=domains,
         values=scores,
@@ -1350,12 +1373,11 @@ def render_domain_conformance_donut(domain_data: Optional[Dict[str, float]] = No
 
 def render_domain_ranked_list(domain_data: Optional[Dict[str, float]] = None) -> str:
     """Ranked leaderboard list paired beside the Domain Conformance Donut."""
-    if domain_data:
-        domains = list(domain_data.keys())
-        scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
-    else:
-        domains = ["Security", "UI/UX", "Functional", "Governance", "Performance"]
-        scores = [92.0, 95.0, 88.0, 78.0, 68.0]
+    if not domain_data:
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No domain conformance telemetry recorded</div>"
+
+    domains = list(domain_data.keys())
+    scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
 
     pairs = sorted(zip(domains, scores), key=lambda x: x[1], reverse=True)
     items = []
@@ -1375,7 +1397,7 @@ def render_domain_ranked_list(domain_data: Optional[Dict[str, float]] = None) ->
 def render_domain_radial_gauges(domain_data: Optional[Dict[str, float]] = None) -> go.Figure:
     """Small-multiples grid of 5 mini circular radial indicators across domains."""
     if not domain_data:
-        domain_data = {"Security": 92.0, "UI/UX": 95.0, "Functional": 88.0, "Governance": 78.0, "Performance": 68.0}
+        return render_empty_chart_state("Domain Cluster Conformance", "No domain conformance telemetry recorded")
 
     domains = list(domain_data.keys())
     scores = [float(domain_data[k]) if domain_data[k] > 1.0 else float(domain_data[k]) * 100.0 for k in domains]
@@ -1420,14 +1442,10 @@ def render_domain_radial_gauges(domain_data: Optional[Dict[str, float]] = None) 
 
 def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """7-day intent conformance trajectory Annotated Line Chart with forecast confidence band."""
-    if not trends_data:
-        trends_data = {
-            "dates": ["Sep 10", "Sep 11", "Sep 12", "Sep 13", "Sep 14", "Sep 15", "Sep 16"],
-            "actual": [76.0, 78.5, 80.0, 81.5, 82.0, 82.0, 82.0],
-            "forecast": [82.0, 83.5, 85.0, 86.2],
-            "forecast_dates": ["Sep 16", "Sep 17", "Sep 18", "Sep 19"],
-        }
-    elif isinstance(trends_data, dict) and "history" in trends_data and trends_data.get("history"):
+    if not trends_data or not isinstance(trends_data, dict):
+        return render_empty_chart_state("Intent Conformance Trajectory", "No historical conformance telemetry recorded")
+
+    if "history" in trends_data and trends_data.get("history"):
         hist = trends_data.get("history", [])
         raw_dates = [str(h.get("recorded_at", ""))[:10] for h in hist]
         dates = []
@@ -1463,10 +1481,13 @@ def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, A
             "forecast_dates": f_dates,
         }
 
-    dates = trends_data.get("dates", ["Sep 10", "Sep 11", "Sep 12", "Sep 13", "Sep 14", "Sep 15", "Sep 16"])
-    actual = trends_data.get("actual", [76.0, 78.5, 80.0, 81.5, 82.0, 82.0, 82.0])
-    f_dates = trends_data.get("forecast_dates", ["Sep 16", "Sep 17", "Sep 18", "Sep 19"])
-    f_vals = trends_data.get("forecast", [82.0, 83.5, 85.0, 86.2])
+    dates = trends_data.get("dates", [])
+    actual = trends_data.get("actual", [])
+    f_dates = trends_data.get("forecast_dates", [])
+    f_vals = trends_data.get("forecast", [])
+
+    if not dates or not actual:
+        return render_empty_chart_state("Intent Conformance Trajectory", "No historical conformance telemetry recorded")
 
     fig = go.Figure()
 
@@ -1485,65 +1506,68 @@ def render_intent_conformance_trajectory_chart(trends_data: Optional[Dict[str, A
     )
 
     # Forecast with confidence area
-    upper_f = [v + 2.5 for v in f_vals]
-    lower_f = [v - 2.5 for v in f_vals]
-    fig.add_trace(go.Scatter(x=f_dates, y=upper_f, mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"))
-    fig.add_trace(
-        go.Scatter(
-            x=f_dates,
-            y=lower_f,
-            mode="lines",
-            line=dict(width=0),
-            fill="tonexty",
-            fillcolor="rgba(0, 113, 227, 0.12)",
-            name="Forecast Confidence Band",
-            hoverinfo="skip",
+    if f_dates and f_vals:
+        upper_f = [v + 2.5 for v in f_vals]
+        lower_f = [v - 2.5 for v in f_vals]
+        fig.add_trace(go.Scatter(x=f_dates, y=upper_f, mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"))
+        fig.add_trace(
+            go.Scatter(
+                x=f_dates,
+                y=lower_f,
+                mode="lines",
+                line=dict(width=0),
+                fill="tonexty",
+                fillcolor="rgba(0, 113, 227, 0.12)",
+                name="Forecast Confidence Band",
+                hoverinfo="skip",
+            )
         )
-    )
 
-    # Forecast trajectory line (dashed, distinct)
-    fig.add_trace(
-        go.Scatter(
-            x=f_dates,
-            y=f_vals,
-            mode="lines+markers",
-            name="Projected Trajectory",
-            line=dict(color="#2563EB", width=2, dash="dot"),
-            marker=dict(size=8, symbol="diamond"),
+        # Forecast trajectory line (dashed, distinct)
+        fig.add_trace(
+            go.Scatter(
+                x=f_dates,
+                y=f_vals,
+                mode="lines+markers",
+                name="Projected Trajectory",
+                line=dict(color="#2563EB", width=2, dash="dot"),
+                marker=dict(size=8, symbol="diamond"),
+            )
         )
-    )
 
     # Dashed Target Line with inline label at rightmost visible point
-    fig.add_shape(type="line", x0=dates[0], x1=f_dates[-1], y0=85, y1=85, line=dict(color=COLORS["success"], width=1.5, dash="dash"))
-    fig.add_annotation(x=f_dates[-1], y=86.5, xanchor="right", text="85% Pass/Fail Threshold", showarrow=False, font=dict(family=FONT_FAMILY, size=10, color=COLORS["success"]))
+    end_x = f_dates[-1] if f_dates else dates[-1]
+    fig.add_shape(type="line", x0=dates[0], x1=end_x, y0=85, y1=85, line=dict(color=COLORS["success"], width=1.5, dash="dash"))
+    fig.add_annotation(x=end_x, y=86.5, xanchor="right", text="85% Pass/Fail Threshold", showarrow=False, font=dict(family=FONT_FAMILY, size=10, color=COLORS["success"]))
 
     fig.update_xaxes(showgrid=True)
-    fig.update_yaxes(title_text="Conformance Rate (%)", range=[65, 100], showgrid=True)
+    fig.update_yaxes(title_text="Conformance Rate (%)", range=[min(50, min(actual) - 5), 100], showgrid=True)
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5, font=dict(size=11)))
     return _apply_layout_defaults(fig, "7-Day Intent Conformance Trend & Forecast Band", height=310)
 
 
 def render_intent_status_donut(intents_data: Optional[List[Dict]] = None) -> go.Figure:
     """Clause Conformance Distribution Donut."""
+    status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
     if intents_data:
-        status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
         for i in intents_data:
-            st = str(i.get("implementation_status") or "").lower()
-            if st == "fully_met":
+            st = str(i.get("conformance_status") or i.get("implementation_status") or "").lower().replace(" ", "_")
+            if st in ("fully_met", "fully met"):
                 status_counts["Fully Met"] += 1
-            elif st == "met":
+            elif st in ("met",):
                 status_counts["Met"] += 1
-            elif st in ("partially_met", "partial"):
+            elif st in ("partially_met", "partial", "partially met"):
                 status_counts["Partially Met"] += 1
-            elif st in ("gap", "not_met"):
+            elif st in ("gap", "not_met", "not met"):
                 status_counts["Gap"] += 1
-    else:
-        status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
+
+    total_val = sum(status_counts.values())
+    if total_val == 0:
+        return render_empty_chart_state("Clause Conformance Distribution", "No intent clauses recorded")
 
     labels = list(status_counts.keys())
     values = list(status_counts.values())
     color_palette = [COLORS["success"], "#34D399", COLORS["warning"], COLORS["danger"]]
-    total_val = sum(values)
 
     return render_donut_paired_center(
         labels=labels,
@@ -1563,22 +1587,23 @@ render_clause_distribution_donut = render_intent_status_donut
 
 def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
     """Ranked leaderboard list paired beside Clause Conformance Donut with taxonomy definitions."""
+    status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
     if intents_data:
-        status_counts = {"Fully Met": 0, "Met": 0, "Partially Met": 0, "Gap": 0}
         for i in intents_data:
-            st = str(i.get("implementation_status") or "").lower()
-            if st == "fully_met":
+            st = str(i.get("conformance_status") or i.get("implementation_status") or "").lower().replace(" ", "_")
+            if st in ("fully_met", "fully met"):
                 status_counts["Fully Met"] += 1
-            elif st == "met":
+            elif st in ("met",):
                 status_counts["Met"] += 1
-            elif st in ("partially_met", "partial"):
+            elif st in ("partially_met", "partial", "partially met"):
                 status_counts["Partially Met"] += 1
-            elif st in ("gap", "not_met"):
+            elif st in ("gap", "not_met", "not met"):
                 status_counts["Gap"] += 1
-    else:
-        status_counts = {"Fully Met": 2, "Met": 2, "Partially Met": 1, "Gap": 1}
 
-    total = sum(status_counts.values()) or 1
+    total = sum(status_counts.values())
+    if total == 0:
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No intent clauses recorded</div>"
+
     color_palette = [COLORS["success"], "#34D399", COLORS["warning"], COLORS["danger"]]
     tier_definitions = {
         "Fully Met": "100% diff match + test evidence",
@@ -1606,14 +1631,15 @@ def render_clause_ranked_list(intents_data: Optional[List[Dict]] = None) -> str:
 
 def render_contract_funnel_chart(funnel_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Contract Consumption Funnel with explicit percentage-delta annotations."""
-    stages = ["Contract Created", "Schema Validated", "Agent Consumed", "Resumption Succeeded"]
-    counts = [286, 262, 235, 218]
+    if not funnel_data or not isinstance(funnel_data, dict) or not funnel_data.get("steps"):
+        return render_empty_chart_state("Contract Consumption Funnel", "Awaiting contract lifecycle telemetry data")
 
-    if funnel_data and isinstance(funnel_data, dict) and "steps" in funnel_data:
-        steps = funnel_data.get("steps") or []
-        if len(steps) >= 2:
-            stages = [str(s.get("step")) for s in steps]
-            counts = [int(s.get("count", 0)) for s in steps]
+    steps = funnel_data.get("steps") or []
+    if len(steps) < 2 or sum(int(s.get("count", 0)) for s in steps) == 0:
+        return render_empty_chart_state("Contract Consumption Funnel", "Awaiting contract lifecycle telemetry data")
+
+    stages = [str(s.get("step")) for s in steps]
+    counts = [int(s.get("count", 0)) for s in steps]
 
     fig = go.Figure(
         go.Funnel(
@@ -1678,21 +1704,41 @@ def render_contract_funnel_chart(funnel_data: Optional[Dict[str, Any]] = None) -
         )
         title_str = f"Contract Consumption Funnel with Stage Drop-Off Deltas ({net_pct}% Net Success)"
     else:
-        title_str = "Contract Consumption Funnel with Stage Drop-Off Deltas (76.2% Net Success)"
+        title_str = f"Contract Consumption Funnel ({counts[-1] if counts else 0} Resumed)"
 
     return _apply_layout_defaults(fig, title_str, height=330)
 
 
-def render_contract_engagement_heatmap() -> go.Figure:
+def render_contract_engagement_heatmap(engagement_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Section engagement heatmap with muted axis labels and clean glass surface."""
     roles = ["Developer", "QA Engineer", "Product Manager", "Security Lead"]
     sections = ["Requirements (B)", "Dead-Ends (A)", "Intent Gaps (C)", "Integrity Safety (E)"]
-    z_matrix = [
-        [45, 12, 18, 5],
-        [10, 48, 8, 2],
-        [14, 22, 52, 6],
-        [8, 14, 12, 38],
-    ]
+    
+    if not engagement_data or not isinstance(engagement_data, dict):
+        return render_empty_chart_state("Section Engagement Heatmap", "No section click telemetry recorded yet")
+
+    clicks = engagement_data.get("section_clicks_heatmap") or {}
+    if not clicks or sum(clicks.values()) == 0:
+        return render_empty_chart_state("Section Engagement Heatmap", "No section click telemetry recorded yet")
+
+    z_matrix = []
+    for sec in sections:
+        sec_key = sec.split("(")[0].strip()
+        sec_clicks = sum(v for k, v in clicks.items() if sec_key.lower() in k.lower())
+        if sec_clicks == 0:
+            sec_clicks = clicks.get(sec, 0)
+        row = [
+            max(0, int(sec_clicks * 0.40)),
+            max(0, int(sec_clicks * 0.25)),
+            max(0, int(sec_clicks * 0.20)),
+            max(0, int(sec_clicks * 0.15)),
+        ]
+        if sum(row) == 0 and sec_clicks > 0:
+            row[0] = sec_clicks
+        z_matrix.append(row)
+
+    if sum(sum(r) for r in z_matrix) == 0:
+        return render_empty_chart_state("Section Engagement Heatmap", "No section click telemetry recorded yet")
 
     fig = go.Figure(
         data=go.Heatmap(
@@ -1778,12 +1824,7 @@ def render_contract_preset_radar(mode: str = "radar") -> go.Figure:
 def render_semantic_diff_bars(diff_data: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Visual before/after comparison bar chart showing magnitude of contract changes."""
     if not diff_data:
-        diff_data = {
-            "Added Requirements": 3,
-            "Resolved Dead-Ends": -2,
-            "Addressed Intent Gaps": -1,
-            "Integrity Gain (%)": 6.5,
-        }
+        return render_empty_chart_state("Contract Semantic Diff", "No diff telemetry available for contract comparison")
 
     categories = list(diff_data.keys())
     values = list(diff_data.values())
@@ -1809,11 +1850,7 @@ def render_semantic_diff_bars(diff_data: Optional[Dict[str, Any]] = None) -> go.
 def render_contract_version_timeline(versions: Optional[List[Dict[str, Any]]] = None) -> go.Figure:
     """Connected horizontal milestone timeline with dot per version."""
     if not versions:
-        versions = [
-            {"version": "v1.0", "label": "Initial Baseline", "status": "[SUPERSEDED]", "integrity": 82.0, "time": "Day -5"},
-            {"version": "v2.0", "label": "Signed Handoff", "status": "[ACTIVE/CURRENT]", "integrity": 88.5, "time": "Day -1"},
-            {"version": "v3.0-rc", "label": "Candidate Evolution", "status": "[STAGED]", "integrity": 94.0, "time": "Now"},
-        ]
+        return render_empty_chart_state("Contract Version Timeline", "No version history recorded")
 
     x_nodes = [v["time"] for v in versions]
     y_nodes = [v["integrity"] for v in versions]
@@ -1839,14 +1876,14 @@ def render_contract_version_timeline(versions: Optional[List[Dict[str, Any]]] = 
 
 def _normalize_consumer_channel_data(cb_data: Optional[Dict[str, int]] = None) -> Dict[str, int]:
     """Normalize consumer channel keys to human-readable labels."""
-    if not cb_data:
-        return {"Human UI Views": 142, "API Fetch": 86, "Autonomous Agents": 58}
     channel_map = {
         "human_ui_view": "Human UI Views",
         "api_fetch": "API Fetch",
         "agent_session": "Autonomous Agents",
         "agent_sessions": "Autonomous Agents",
     }
+    if not cb_data:
+        return {"Human UI Views": 0, "API Fetch": 0, "Autonomous Agents": 0}
     return {channel_map.get(k, str(k).replace("_", " ").title()): v for k, v in cb_data.items()}
 
 
@@ -1856,9 +1893,12 @@ def render_consumer_channel_donut(cb_data: Optional[Dict[str, int]] = None) -> g
 
     labels = list(cb_data.keys())
     values = list(cb_data.values())
-    colors = [COLORS["primary"], "#2563EB", "#0D9488"]
     total_loads = sum(values)
 
+    if total_loads == 0:
+        return render_empty_chart_state("Consumer Channel Breakdown", "No contract executions recorded")
+
+    colors = [COLORS["primary"], "#2563EB", "#0D9488"]
     return render_donut_paired_center(
         labels=labels,
         values=values,
@@ -1876,7 +1916,11 @@ def render_consumer_channel_horizontal_bars(cb_data: Optional[Dict[str, int]] = 
 
     labels = list(cb_data.keys())
     values = list(cb_data.values())
-    total = sum(values) or 1
+    total = sum(values)
+
+    if total == 0:
+        return render_empty_chart_state("Consumer Channel Breakdown", "No contract executions recorded")
+
     colors = [COLORS["primary"], "#2563EB", "#0D9488"]
 
     fig = go.Figure(
@@ -1900,9 +1944,14 @@ def render_consumer_channel_radar(cb_data: Optional[Dict[str, int]] = None) -> g
     """Radar / Spider chart for Consumer Channel Breakdown (Presentation Mode)."""
     cb_data = _normalize_consumer_channel_data(cb_data)
 
-    categories = list(cb_data.keys())
+    labels = list(cb_data.keys())
     values = list(cb_data.values())
-    categories_closed = categories + [categories[0]]
+    total = sum(values)
+
+    if total == 0:
+        return render_empty_chart_state("Consumer Channel Distribution", "No contract executions recorded")
+
+    categories_closed = labels + [labels[0]]
     values_closed = values + [values[0]]
 
     fig = go.Figure()
@@ -1931,7 +1980,10 @@ def render_consumer_channel_ranked_list(cb_data: Optional[Dict[str, int]] = None
     """Ranked leaderboard list paired beside Consumer Channel Donut."""
     cb_data = _normalize_consumer_channel_data(cb_data)
 
-    total = sum(cb_data.values()) or 1
+    total = sum(cb_data.values())
+    if total == 0:
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No contract load events recorded</div>"
+
     colors = [COLORS["primary"], "#2563EB", "#0D9488"]
     sorted_channels = sorted(cb_data.items(), key=lambda x: x[1], reverse=True)
     items = []
@@ -1949,10 +2001,7 @@ def render_consumer_channel_ranked_list(cb_data: Optional[Dict[str, int]] = None
 def render_ab_test_comparison_bars(ab_tests: Optional[List[Dict[str, Any]]] = None) -> go.Figure:
     """Paired-bar comparison (Variant A vs Variant B completion rate) with winner highlighted."""
     if not ab_tests:
-        ab_tests = [
-            {"name": "Dev vs QA Compact", "va": 83.3, "vb": 86.4, "winner": "QA (86.4%)"},
-            {"name": "PM Standard vs Technical", "va": 78.0, "vb": 72.0, "winner": "PM Standard (78.0%)"},
-        ]
+        return render_empty_chart_state("Template A/B Testing", "No A/B experiments currently running")
 
     names = [t.get("name") or t.get("test_name", f"Test {i+1}") for i, t in enumerate(ab_tests)]
     rates_a = []
@@ -1984,46 +2033,32 @@ def render_ab_test_comparison_bars(ab_tests: Optional[List[Dict[str, Any]]] = No
 
 def render_integrity_trajectory_flagship(trend_res: Optional[Dict[str, Any]] = None, anomaly_events: Optional[List[Dict[str, Any]]] = None) -> go.Figure:
     """Flagship Annotated Line Chart: gradient fill, dashed safety threshold with inline label, vertical alert event markers, dashed forecast."""
-    if not trend_res:
-        trend_res = {
-            "history": [
-                {"checkpoint_id": "chk-001", "integrity_score": 0.82, "recorded_at": "Day -6"},
-                {"checkpoint_id": "chk-002", "integrity_score": 0.85, "recorded_at": "Day -4"},
-                {"checkpoint_id": "chk-003", "integrity_score": 0.88, "recorded_at": "Day -2"},
-                {"checkpoint_id": "chk-004", "integrity_score": 0.91, "recorded_at": "Day -1"},
-                {"checkpoint_id": "chk-005", "integrity_score": 0.94, "recorded_at": "Now"},
-            ],
-            "average_score": 0.88,
-            "forecast_7d": 0.965,
-            "slope": 0.024,
-            "variance": 0.0012,
-            "summary": "Trajectory is improving consistently.",
-        }
+    if not trend_res or not isinstance(trend_res, dict):
+        return render_empty_chart_state("Resume Integrity Trajectory", "Insufficient historical integrity snapshots (minimum 2 required for trajectory)")
 
     hist = trend_res.get("history") or []
     if len(hist) < 2:
-        x_labels = ["T-6d", "T-4d", "T-2d", "T-1d", "Now"]
-        y_scores = [82.0, 85.0, 88.0, 91.0, 94.0]
-    else:
-        x_labels = []
-        y_scores = []
-        seen_dates = {}
-        for i, h in enumerate(hist):
-            rec = str(h.get("recorded_at") or f"pt-{i}")
-            try:
-                from datetime import datetime
-                dt = datetime.fromisoformat(rec.replace("Z", "+00:00"))
-                base_label = dt.strftime("%b %d")
-            except Exception:
-                base_label = rec[:10] if len(rec) > 10 else rec
-            seen_dates[base_label] = seen_dates.get(base_label, 0) + 1
-            if seen_dates[base_label] > 1:
-                label = f"{base_label} (#{seen_dates[base_label]})"
-            else:
-                label = base_label
-            x_labels.append(label)
-            sc = float(h.get("integrity_score") or 0.85)
-            y_scores.append(sc * 100.0 if sc <= 1.0 else sc)
+        return render_empty_chart_state("Resume Integrity Trajectory", "Insufficient historical integrity snapshots (minimum 2 required for trajectory)")
+
+    x_labels = []
+    y_scores = []
+    seen_dates = {}
+    for i, h in enumerate(hist):
+        rec = str(h.get("recorded_at") or f"pt-{i}")
+        try:
+            from datetime import datetime
+            dt = datetime.fromisoformat(rec.replace("Z", "+00:00"))
+            base_label = dt.strftime("%b %d")
+        except Exception:
+            base_label = rec[:10] if len(rec) > 10 else rec
+        seen_dates[base_label] = seen_dates.get(base_label, 0) + 1
+        if seen_dates[base_label] > 1:
+            label = f"{base_label} (#{seen_dates[base_label]})"
+        else:
+            label = base_label
+        x_labels.append(label)
+        sc = float(h.get("integrity_score") or 0.85)
+        y_scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     # Append Forecast step
     proj_val = float(trend_res.get("forecast_7d", (y_scores[-1] / 100.0) + 0.02))
@@ -2184,15 +2219,10 @@ def render_integrity_trajectory_flagship(trend_res: Optional[Dict[str, Any]] = N
 
 def render_memory_confidence_battery(bins_data: Optional[Dict[str, int]] = None) -> go.Figure:
     """Horizontal single-bar segmented battery meter showing memory health distribution."""
-    if not bins_data:
-        bins_data = {
-            "Fresh (>0.8)": 7,
-            "Medium (0.5-0.8)": 2,
-            "Marginal (0.3-0.5)": 1,
-            "Decayed (<0.3)": 1,
-        }
+    if not bins_data or not isinstance(bins_data, dict) or sum(bins_data.values()) == 0:
+        return render_empty_chart_state("Agent Memory Health", "No active memory telemetry for session")
 
-    total = sum(bins_data.values()) or 1
+    total = sum(bins_data.values())
     labels = list(bins_data.keys())
     counts = list(bins_data.values())
     pcts = [(c / total) * 100.0 for c in counts]
@@ -2420,15 +2450,14 @@ def render_multi_session_integrity_bar(session_scores: Optional[Dict[str, Any]] 
     """Multi-session bar chart overlaid with aggregate multi-session baseline reference line.
     Collision-safe with automargin, dynamic rotation, and horizontal presentation mode.
     """
-    if session_scores and isinstance(session_scores, dict):
-        sessions = list(session_scores.keys())
-        scores = []
-        for sid in sessions:
-            sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
-            scores.append(sc * 100.0 if sc <= 1.0 else sc)
-    else:
-        sessions = ["session-prod-01", "session-prod-02", "session-prev-01"]
-        scores = [95.0, 88.0, 85.0]
+    if not session_scores or not isinstance(session_scores, dict):
+        return render_empty_chart_state("Cross-Session Integrity", "No session scores available for comparison")
+
+    sessions = list(session_scores.keys())
+    scores = []
+    for sid in sessions:
+        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     colors = [COLORS["success"] if s >= 80 else COLORS["danger"] for s in scores]
     agg_val = aggregate_score * 100.0 if (aggregate_score is not None and aggregate_score <= 1.0) else (aggregate_score if aggregate_score is not None else sum(scores) / len(scores))
@@ -2547,15 +2576,14 @@ def render_multi_session_integrity_bar(session_scores: Optional[Dict[str, Any]] 
 
 def render_session_radial_gauges(session_scores: Optional[Dict[str, Any]] = None) -> go.Figure:
     """Small-multiples radial gauges showing multi-session integrity scores (Presentation Mode)."""
-    if session_scores and isinstance(session_scores, dict):
-        sessions = list(session_scores.keys())[:4]
-        scores = []
-        for sid in sessions:
-            sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
-            scores.append(round(sc * 100.0 if sc <= 1.0 else sc, 1))
-    else:
-        sessions = ["Session 01", "Session 02", "Session Prev"]
-        scores = [95.0, 88.0, 85.0]
+    if not session_scores or not isinstance(session_scores, dict):
+        return render_empty_chart_state("Session Integrity", "No session scores available for comparison")
+
+    sessions = list(session_scores.keys())[:4]
+    scores = []
+    for sid in sessions:
+        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        scores.append(round(sc * 100.0 if sc <= 1.0 else sc, 1))
 
     palette = [COLORS["success"] if s >= 80 else COLORS["danger"] for s in scores]
 
@@ -2594,15 +2622,14 @@ def render_session_radial_gauges(session_scores: Optional[Dict[str, Any]] = None
 
 def render_multi_session_ranked_list(session_scores: Optional[Dict[str, Any]] = None) -> str:
     """Ranked leaderboard list paired beside Cross-Session Integrity Bar."""
-    if session_scores and isinstance(session_scores, dict):
-        sessions = list(session_scores.keys())
-        scores = []
-        for sid in sessions:
-            sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
-            scores.append(sc * 100.0 if sc <= 1.0 else sc)
-    else:
-        sessions = ["session-prod-01", "session-prod-02", "session-prev-01"]
-        scores = [95.0, 88.0, 85.0]
+    if not session_scores or not isinstance(session_scores, dict):
+        return "<div style='padding:20px;text-align:center;color:#8E8E93;font-size:12px;'>No session scores recorded</div>"
+
+    sessions = list(session_scores.keys())
+    scores = []
+    for sid in sessions:
+        sc = session_scores[sid].get("score", 0.85) if isinstance(session_scores[sid], dict) else float(session_scores[sid])
+        scores.append(sc * 100.0 if sc <= 1.0 else sc)
 
     pairs = sorted(zip(sessions, scores), key=lambda x: x[1], reverse=True)
     items = []
@@ -2619,10 +2646,26 @@ def render_multi_session_ranked_list(session_scores: Optional[Dict[str, Any]] = 
     return render_ranked_list_html(items, title="Session Integrity Leaderboard")
 
 
-def render_memory_confidence_histogram() -> go.Figure:
-    """Historical memory confidence histogram kept for compatibility."""
+def render_memory_confidence_histogram(memories: Optional[List[Dict[str, Any]]] = None) -> go.Figure:
+    """Historical memory confidence histogram binned from real memory entries."""
+    if not memories:
+        return render_empty_chart_state("Agent Memory Confidence Distribution", "No memory entries stored for this session")
+
     bins = ["0.9 - 1.0", "0.8 - 0.9", "0.7 - 0.8", "0.3 - 0.7", "< 0.3 (Decayed)"]
-    counts = [3, 4, 2, 1, 1]
+    counts = [0, 0, 0, 0, 0]
+    for m in memories:
+        conf = float(m.get("effective_confidence") if m.get("effective_confidence") is not None else m.get("confidence", 0.0))
+        if conf >= 0.9:
+            counts[0] += 1
+        elif conf >= 0.8:
+            counts[1] += 1
+        elif conf >= 0.7:
+            counts[2] += 1
+        elif conf >= 0.3:
+            counts[3] += 1
+        else:
+            counts[4] += 1
+
     bar_colors = [COLORS["success"], COLORS["primary"], COLORS["primary"], COLORS["warning"], COLORS["danger"]]
 
     fig = go.Figure(
@@ -2649,15 +2692,7 @@ def render_anomaly_alerts_timeline(alerts: Optional[List[Dict[str, Any]]] = None
     dominant severity color, and detailed hover tooltips listing all individual alerts.
     Connector stems and alternating textpositions guarantee zero visual label collisions.
     """
-    if alerts is None:
-        alerts = [
-            {"id": "al-01", "alert_type": "Schema Drift", "severity": "minor", "detected_at": "T-5d", "checkpoint": "chk-001"},
-            {"id": "al-02", "alert_type": "Memory Drift", "severity": "major", "detected_at": "T-3d", "checkpoint": "chk-003"},
-            {"id": "al-03", "alert_type": "Dead-End Spike", "severity": "critical", "detected_at": "T-1d", "checkpoint": "chk-004"},
-            {"id": "al-04", "alert_type": "Contradiction", "severity": "minor", "detected_at": "Today", "checkpoint": "chk-005"},
-        ]
-
-    if len(alerts) == 0:
+    if alerts is None or len(alerts) == 0:
         return render_empty_chart_state(
             title="Statistical Anomaly Spike Timeline",
             reason="All systems nominal — zero statistical anomaly alerts detected.",

@@ -1153,9 +1153,9 @@ class CheckpointDX:
             p90_idx = min(len(durations) - 1, int(len(durations) * 0.9))
             p90_hours = round(durations[p90_idx], 1)
         else:
-            avg_hours = 24.0
-            p50_hours = 18.0
-            p90_hours = 48.0
+            avg_hours = 0.0
+            p50_hours = 0.0
+            p90_hours = 0.0
 
         bottlenecks = []
         if status_dist.get("blocked", 0) > 0:
@@ -1699,64 +1699,8 @@ class CheckpointDX:
         except Exception:
             pass
 
-        # Curated diverse dead-ends covering Critical, Major, and Minor severities across distinct failure types
-        default_dead_ends = [
-            {
-                "id": "9917da54-6ba5-4e2a-96cb-0bac945c3466",
-                "checkpoint_id": checkpoint_id or "chk-001",
-                "dead_end_type": "logic_error",
-                "severity": "critical",
-                "root_cause": "Synchronous token verification on shared global state caused thread deadlock under concurrent API worker requests.",
-                "suggested_fix": "Adopt distributed Redis mutex lock with double-checked token cache lookup before refresh.",
-                "confidence_score": 0.96,
-                "cluster_key": "AUTH_TOKEN_RACE_CONDITION",
-                "fix_effectiveness": getattr(self, "_fix_outcomes", {}).get("9917da54-6ba5-4e2a-96cb-0bac945c3466", "worked"),
-                "failed_attempts": 3,
-                "used_fallback": False,
-            },
-            {
-                "id": "4fc4eca4-a330-403c-95d4-ba2c543b36be",
-                "checkpoint_id": checkpoint_id or "chk-001",
-                "dead_end_type": "timeout",
-                "severity": "major",
-                "root_cause": "Databricks SQL warehouse connection timeout during cold start on burst analytical query submission.",
-                "suggested_fix": "Enable statement execution polling with exponential backoff jitter and client-side statement cache.",
-                "confidence_score": 0.88,
-                "cluster_key": "WAREHOUSE_TIMEOUT_BLOCKAGE",
-                "fix_effectiveness": getattr(self, "_fix_outcomes", {}).get("4fc4eca4-a330-403c-95d4-ba2c543b36be", "worked"),
-                "failed_attempts": 2,
-                "used_fallback": True,
-            },
-            {
-                "id": "c236b756-c3b9-4989-9a94-abd073dd0b04",
-                "checkpoint_id": checkpoint_id or "chk-001",
-                "dead_end_type": "resource_exhaustion",
-                "severity": "major",
-                "root_cause": "Unbounded memory allocation during full unpartitioned delta lake trace scan.",
-                "suggested_fix": "Streaming generator chunking with mandatory LIMIT 100 clause and partition filtering.",
-                "confidence_score": 0.85,
-                "cluster_key": "RESOURCE_EXHAUSTION_DELTA",
-                "fix_effectiveness": getattr(self, "_fix_outcomes", {}).get("c236b756-c3b9-4989-9a94-abd073dd0b04", "failed"),
-                "failed_attempts": 2,
-                "used_fallback": False,
-            },
-            {
-                "id": "f0a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
-                "checkpoint_id": checkpoint_id or "chk-001",
-                "dead_end_type": "schema_mismatch",
-                "severity": "minor",
-                "root_cause": "Unchecked JSON column deserialization missing optional telemetry schema version field.",
-                "suggested_fix": "Add defensive Pydantic schema validator with default null fallback handlers.",
-                "confidence_score": 0.72,
-                "cluster_key": "SCHEMA_EVOLUTION_GAP",
-                "fix_effectiveness": getattr(self, "_fix_outcomes", {}).get("f0a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c", "untested"),
-                "failed_attempts": 1,
-                "used_fallback": True,
-            },
-        ]
-
         if not raw_des:
-            return default_dead_ends
+            return []
 
         # Enrich raw records with calibrated severities and fix outcomes
         for d in raw_des:
@@ -1768,7 +1712,7 @@ class CheckpointDX:
             if not d.get("severity") or d.get("severity") == "minor":
                 d["severity"] = "critical" if "race" in str(d.get("root_cause", "")).lower() else "major"
 
-        return raw_des if len(raw_des) >= 4 else default_dead_ends
+        return raw_des
 
     def _insert_dead_end_trace(self, tags: dict, outputs: dict) -> str:
         """Writes directly to Delta table checkpoint_dx.checkpoints.dead_end_traces
@@ -2652,6 +2596,18 @@ The engineering team recommends adopting the following verified remedy:
             "underperforming_fixes": underperforming_fixes,
             "category_distribution": categories,
         }
+
+    def get_fix_success_rate(self, checkpoint_id: Optional[str] = None) -> float:
+        """Returns the calculated fix success rate (0.0 to 1.0) for a given checkpoint or overall."""
+        if checkpoint_id:
+            des = self.get_dead_ends(checkpoint_id)
+            if not des:
+                return 0.0
+            worked = sum(1 for d in des if d.get("fix_effectiveness") == "worked")
+            tested = sum(1 for d in des if d.get("fix_effectiveness") in ("worked", "failed"))
+            return round(worked / tested, 3) if tested > 0 else 0.0
+        analytics = self.get_fix_outcome_analytics()
+        return round(float(analytics.get("overall_success_rate", 0.0)) / 100.0, 3)
 
     def get_dead_end_clusters(self, project_name: str = None) -> List[Dict]:
         """Retrieves dead-end clusters grouped by root cause similarity."""
@@ -5989,57 +5945,9 @@ The engineering team recommends adopting the following verified remedy:
             except Exception as e:
                 logger.debug(f"get_ab_tests note: {e}")
 
-        if not tests or len(tests) < 2:
-            tests = [
-                {
-                    "id": "ab-dev-qa-01",
-                    "test_name": "Dev vs QA Efficiency Benchmark",
-                    "variant_a_id": "dev",
-                    "variant_b_id": "qa",
-                    "traffic_split": 0.5,
-                    "status": "running",
-                    "results": {
-                        "variant_a_impressions": 134,
-                        "variant_b_impressions": 152,
-                        "variant_a_conversions": 102,
-                        "variant_b_conversions": 141,
-                        "statistical_confidence": 0.92,
-                        "winner": "qa",
-                    },
-                },
-                {
-                    "id": "ab-tech-exec-02",
-                    "test_name": "Compact Technical vs Executive Layout",
-                    "variant_a_id": "technical",
-                    "variant_b_id": "executive",
-                    "traffic_split": 0.5,
-                    "status": "completed",
-                    "results": {
-                        "variant_a_impressions": 48,
-                        "variant_b_impressions": 52,
-                        "variant_a_conversions": 38,
-                        "variant_b_conversions": 47,
-                        "statistical_confidence": 0.89,
-                        "winner": "executive",
-                    },
-                },
-                {
-                    "id": "ab-sec-flow-03",
-                    "test_name": "Security-Gated vs Standard Delivery Flow",
-                    "variant_a_id": "standard",
-                    "variant_b_id": "security_gated",
-                    "traffic_split": 0.4,
-                    "status": "running",
-                    "results": {
-                        "variant_a_impressions": 36,
-                        "variant_b_impressions": 40,
-                        "variant_a_conversions": 28,
-                        "variant_b_conversions": 38,
-                        "statistical_confidence": 0.94,
-                        "winner": "security_gated",
-                    },
-                },
-            ]
+        # If no tests exist in Supabase, return empty list (no silent mock injection)
+        if not tests:
+            return []
 
         for t in tests:
             res = t.get("results")
@@ -6230,65 +6138,42 @@ The engineering team recommends adopting the following verified remedy:
                 if not any(i.get("id") == li.get("id") for i in interactions):
                     interactions.append(li)
 
-        total_loads = len(executions) if len(executions) >= 286 else 286
-        unique_users = len({e.get("consumer_identifier") for e in executions if e.get("consumer_identifier")}) or 8
-        avg_loads_per_user = round(total_loads / max(unique_users, 1), 1)
+        total_loads = len(executions)
+        unique_users = len({e.get("consumer_identifier") for e in executions if e.get("consumer_identifier")})
+        avg_loads_per_user = round(total_loads / max(unique_users, 1), 1) if unique_users > 0 else 0.0
         hours_saved = round(total_loads * 2.5, 1)
 
-        # Dynamic consumer breakdown from executions (strictly partitioned to sum exactly to total_loads):
+        # Dynamic consumer breakdown strictly from real executions:
         human_views = len([e for e in executions if e.get("consumer_type") == "human_ui_view"])
         api_fetches = len([e for e in executions if e.get("consumer_type") == "api_fetch"])
         agent_sess = len([e for e in executions if e.get("consumer_type") == "agent_session"])
 
-        raw_parts = [
-            ("human_ui_view", human_views if human_views > 0 else 142),
-            ("api_fetch", api_fetches if api_fetches > 0 else 86),
-            ("agent_session", agent_sess if agent_sess > 0 else 58),
-        ]
-        total_raw = sum(p[1] for p in raw_parts) or 1
-        h_cnt = round(total_loads * (raw_parts[0][1] / total_raw))
-        a_cnt = round(total_loads * (raw_parts[1][1] / total_raw))
-        s_cnt = total_loads - h_cnt - a_cnt
-
         consumer_breakdown = {
-            "human_ui_view": h_cnt,
-            "api_fetch": a_cnt,
-            "agent_session": s_cnt,
+            "human_ui_view": human_views,
+            "api_fetch": api_fetches,
+            "agent_session": agent_sess,
         }
 
-        # Dynamic engagement metrics from interactions:
+        # Dynamic engagement metrics strictly from real interactions:
         durations = [float(i.get("duration_seconds") or 0) for i in interactions if i.get("duration_seconds")]
         scrolls = [float(i.get("scroll_depth") or 0) for i in interactions if i.get("scroll_depth")]
 
-        avg_dur = round(sum(durations) / len(durations), 1) if durations else 185.0
+        avg_dur = round(sum(durations) / len(durations), 1) if durations else 0.0
         if scrolls:
             avg_s = sum(scrolls) / len(scrolls)
             avg_scr = round(avg_s * 100.0 if avg_s <= 1.0 else avg_s, 1)
         else:
-            avg_scr = 78.5
+            avg_scr = 0.0
 
         pdf_count = len([i for i in interactions if i.get("interaction_type") == "pdf_export"])
-        if not interactions:
-            pdf_count = 8
         md_count = len([i for i in interactions if i.get("interaction_type") == "markdown_export"])
-        if not interactions:
-            md_count = 12
         json_count = len([i for i in interactions if i.get("interaction_type") in ("json_copy", "view", "json_export")])
-        if not interactions:
-            json_count = 15
 
         section_clicks = {}
         for i in interactions:
             s_name = i.get("section_name")
             if s_name:
                 section_clicks[s_name] = section_clicks.get(s_name, 0) + 1
-        if not section_clicks:
-            section_clicks = {
-                "unresolved_requirements": 42,
-                "do_not_retry": 38,
-                "flagged_gaps": 29,
-                "integrity_check": 19,
-            }
 
         engagement = {
             "avg_view_duration_seconds": avg_dur,
@@ -6299,30 +6184,39 @@ The engineering team recommends adopting the following verified remedy:
             "json_copies": json_count,
         }
 
+        # Real funnel metrics strictly from executions:
         c_created = total_loads
-        c_schema = round(total_loads * (262 / 286))
-        c_agent = round(total_loads * (235 / 286))
-        c_resumed = round(total_loads * (218 / 286))
+        c_schema = sum(1 for e in executions if e.get("resume_contract_id"))
+        c_agent = sum(1 for e in executions if e.get("consumer_type") == "agent_session")
+        c_resumed = sum(1 for e in executions if e.get("outcome_reported"))
 
         funnel = {
             "steps": [
-                {"step": "Contract Created", "count": c_created, "pct": 100.0},
-                {"step": "Schema Validated", "count": c_schema, "pct": round(c_schema / c_created * 100, 1)},
-                {"step": "Agent Consumed", "count": c_agent, "pct": round(c_agent / c_created * 100, 1)},
-                {"step": "Resumption Succeeded", "count": c_resumed, "pct": round(c_resumed / c_created * 100, 1)},
+                {"step": "Contract Created", "count": c_created, "pct": 100.0 if c_created > 0 else 0.0},
+                {"step": "Schema Validated", "count": c_schema, "pct": round(c_schema / c_created * 100, 1) if c_created > 0 else 0.0},
+                {"step": "Agent Consumed", "count": c_agent, "pct": round(c_agent / c_created * 100, 1) if c_created > 0 else 0.0},
+                {"step": "Resumption Succeeded", "count": c_resumed, "pct": round(c_resumed / c_created * 100, 1) if c_created > 0 else 0.0},
             ],
             "drop_off_rate_pct": round((1.0 - (c_resumed / c_created if c_created else 1)) * 100, 1),
         }
 
-        time_series = [
-            {"day": "Day -6", "loads": 3},
-            {"day": "Day -5", "loads": 5},
-            {"day": "Day -4", "loads": 2},
-            {"day": "Day -3", "loads": 4},
-            {"day": "Day -2", "loads": 6},
-            {"day": "Day -1", "loads": 3},
-            {"day": "Today", "loads": total_loads - 23 if total_loads >= 23 else 1},
-        ]
+        # Real 7-day time series computed dynamically from executions timestamps:
+        now_dt = datetime.utcnow()
+        time_series = []
+        for d in range(6, -1, -1):
+            target_date = (now_dt - timedelta(days=d)).date()
+            label = "Today" if d == 0 else f"Day -{d}"
+            day_loads = 0
+            for e in executions:
+                ts = e.get("loaded_at") or e.get("created_at")
+                if ts:
+                    try:
+                        e_dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00")).date()
+                        if e_dt == target_date:
+                            day_loads += 1
+                    except Exception:
+                        pass
+            time_series.append({"day": label, "loads": day_loads})
 
         return {
             "total_loads": total_loads,

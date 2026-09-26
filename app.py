@@ -456,8 +456,8 @@ try:
     _global_analytics = dx.get_advanced_contract_analytics(None) or {}
 except Exception:
     _global_analytics = {}
-cb = _global_analytics.get("consumer_breakdown", {"human_ui_view": 142, "api_fetch": 86, "agent_session": 58})
-eng = _global_analytics.get("engagement", {"avg_view_duration_seconds": 185.0, "avg_scroll_depth_pct": 78.5, "pdf_exports": 8, "markdown_exports": 12, "json_copies": 15})
+cb = _global_analytics.get("consumer_breakdown", {})
+eng = _global_analytics.get("engagement", {})
 
 st.title("Checkpoint-Native DX")
 st.caption("Enterprise developer experience bridging git/Entire checkpoints into Databricks Delta, Unity Catalog, and Supabase.")
@@ -476,11 +476,15 @@ st.markdown("""
 # ==============================================================================
 with st.container():
     # Pull real historical trajectory series per stage (Master Rule #2)
-    s1_spark = [3.0, 2.0, 4.0, 1.0, 2.0]  # Failure density across chk-001..chk-005
-    s2_spark = [25.0, 24.0, 21.0, 18.0, 16.0, 13.0, 9.5, 6.0, 3.5, 1.0]  # Real sprint burndown
-    s3_spark = [76.0, 78.5, 80.0, 81.5, 82.0, 82.0, 82.0]  # 7-day conformance trajectory
-    s4_spark = [82.0, 85.0, 88.5, 91.0, 94.0]  # 5-point contract version trajectory
-    s5_spark = [82.0, 85.0, 88.0, 91.0, 94.0]  # 7-day integrity history
+    s1_all_cps = dx.get_checkpoints() or []
+    s1_spark = [float(len(dx.get_dead_ends(cp.get("id")))) for cp in s1_all_cps[:5]] if s1_all_cps else []
+    s2_burndown = dx.get_sprint_burndown_variance(selected_cid) if hasattr(dx, 'get_sprint_burndown_variance') else {}
+    s2_spark = [float(v) for v in (s2_burndown.get("actual") or [])]
+    s3_conf = dx.get_conformance_trajectory(selected_cid) if hasattr(dx, 'get_conformance_trajectory') else []
+    s3_spark = [float(pt.get("score", 0.0)) for pt in (s3_conf or [])] if s3_conf else []
+    s4_vers = _global_analytics.get("versions", [])
+    s4_spark = [float(v.get("integrity", 0.0)) for v in s4_vers if "integrity" in v] if s4_vers else []
+    s5_spark = dx.get_integrity_trend_7d(selected_session) or []
 
     cached_diag = st.session_state.get(f"last_diagnosis_{selected_session}")
     if not cached_diag:
@@ -495,7 +499,7 @@ with st.container():
     s5_status_val = "fail" if is_s5_blocked else "pass"
     s5_detail_label = f"{s5_score_val:.1f}% [BLOCKED]" if is_s5_blocked else f"{s5_score_val:.1f}% [SAFE]"
 
-    stage3_grade = "Grade B"
+    stage3_grade = "Grade N/A"
     pipeline_intents = []
     try:
         sql = f"""
@@ -538,31 +542,9 @@ with st.container():
         except Exception:
             pass
 
-    if not pipeline_intents:
-        default_samples = [
-            ("User authentication with JWT bearer tokens and bcrypt password hashing", "met", 0.92, "security"),
-            ("Redis caching layer for database query acceleration with TTL invalidation", "partially_met", 0.68, "performance"),
-            ("Streamlit interactive UI dashboard with metric widgets and tab navigation", "fully_met", 0.95, "ui_ux"),
-            ("Automated unit and integration test suite with high branch coverage", "not_met", 0.30, "non_functional"),
-            ("Append-only audit trail exporting signed reports in Markdown, JSON, and CSV", "met", 0.88, "functional"),
-        ]
-        for c_text, c_status, c_conf, c_cat in default_samples:
-            pipeline_intents.append({
-                "checkpoint_id": selected_cid or "chk-001",
-                "clause_text": c_text,
-                "implementation_status": c_status,
-                "confidence_score": c_conf,
-                "deadend_flag": "clean",
-                "category": c_cat,
-                "source": "Curated Suite",
-            })
-
-    try:
-        dash_c = dx.get_compliance_dashboard(selected_cid, intents_override=pipeline_intents)
-        if dash_c and "grade" in dash_c:
-            stage3_grade = f"Grade {dash_c['grade']}"
-    except Exception:
-        pass
+    dash_c = dx.get_compliance_dashboard(selected_cid, intents_override=pipeline_intents) if pipeline_intents else {}
+    if dash_c and "grade" in dash_c:
+        stage3_grade = f"Grade {dash_c['grade']}"
 
     # Stage 01 dynamic detail
     s1_count = 0
@@ -571,7 +553,7 @@ with st.container():
         s1_count = len(s1_des)
     except Exception:
         pass
-    s1_detail_label = f"{s1_count} Traces Guarded" if s1_count else "2 Traces Guarded"
+    s1_detail_label = f"{s1_count} Trace{'s' if s1_count != 1 else ''} Guarded"
 
     # Stage 02 dynamic detail
     s2_pts = 0
@@ -591,13 +573,23 @@ with st.container():
         s2_pts = sum(int(r.get("effort_points") or 0) for r in s2_reqs)
     except Exception:
         pass
-    s2_detail_label = f"{s2_count} Reqs | {s2_pts} Pts DAG" if s2_count else "3 Epics | 11 Pts DAG"
+    s2_detail_label = f"{s2_count} Reqs | {s2_pts} Pts DAG"
+
+    s4_loads = _global_analytics.get("total_loads", 0)
+    s4_roi_hrs = _global_analytics.get("roi_hours_saved", round(s4_loads * 2.5, 1))
+    s4_detail_label = f"{s4_loads} Loads | {s4_roi_hrs}h ROI"
+
+    s1_score = round(float(dx.get_fix_success_rate(selected_cid) * 100.0), 1)
+    s2_analytics = dx.get_requirement_status_analytics(selected_cid)
+    s2_score = round(float(s2_analytics.get("completion_rate", 0.0) * 100.0), 1)
+    s3_score = round(float(dash_c.get("overall_score", 0.0)), 1) if dash_c else 0.0
+    s4_score = round(float(s4_vers[-1].get("integrity", 95.0)), 1) if s4_vers else 0.0
 
     stages_pipeline = [
-        {"name": "Dead-End", "status": "pass", "score": 92.0, "spark": s1_spark, "detail": s1_detail_label, "num": "01", "title": "Dead-End Registry"},
-        {"name": "Ledger", "status": "pass", "score": 88.0, "spark": s2_spark, "detail": s2_detail_label, "num": "02", "title": "Requirement Ledger"},
-        {"name": "Conformance", "status": "pass", "score": 82.0, "spark": s3_spark, "detail": f"{stage3_grade} | 4 Factors", "num": "03", "title": "Intent Conformance"},
-        {"name": "Contract", "status": "pass", "score": 95.0, "spark": s4_spark, "detail": "v2 Signed | 715h ROI", "num": "04", "title": "Resume Contract"},
+        {"name": "Dead-End", "status": "pass" if s1_score >= 60 else "warn", "score": s1_score, "spark": s1_spark, "detail": s1_detail_label, "num": "01", "title": "Dead-End Registry"},
+        {"name": "Ledger", "status": "pass" if s2_score >= 60 else "warn", "score": s2_score, "spark": s2_spark, "detail": s2_detail_label, "num": "02", "title": "Requirement Ledger"},
+        {"name": "Conformance", "status": "pass" if s3_score >= 60 else "warn", "score": s3_score, "spark": s3_spark, "detail": f"{stage3_grade} | {len(pipeline_intents)} Clauses", "num": "03", "title": "Intent Conformance"},
+        {"name": "Contract", "status": "pass", "score": s4_score, "spark": s4_spark, "detail": s4_detail_label, "num": "04", "title": "Resume Contract"},
         {"name": "Integrity", "status": s5_status_val, "score": s5_score_val, "spark": s5_spark, "detail": s5_detail_label, "num": "05", "title": "Resume Integrity"},
     ]
 
@@ -1965,43 +1957,26 @@ with tab_c:
         except Exception:
             pass
 
-    # Provide curated sample clauses if checkpoint has none logged yet
-    if not intents_data:
-        default_samples = [
-            ("User authentication with JWT bearer tokens and bcrypt password hashing", "met", 0.92, "security"),
-            ("Redis caching layer for database query acceleration with TTL invalidation", "partially_met", 0.68, "performance"),
-            ("Streamlit interactive UI dashboard with metric widgets and tab navigation", "fully_met", 0.95, "ui_ux"),
-            ("Automated unit and integration test suite with high branch coverage", "not_met", 0.30, "non_functional"),
-            ("Append-only audit trail exporting signed reports in Markdown, JSON, and CSV", "met", 0.88, "functional"),
-        ]
-        for c_text, c_status, c_conf, c_cat in default_samples:
-            intents_data.append({
-                "checkpoint_id": selected_cid or "chk-001",
-                "clause_text": c_text,
-                "implementation_status": c_status,
-                "confidence_score": c_conf,
-                "deadend_flag": "clean",
-                "category": c_cat,
-                "source": "Curated Suite",
-            })
-
     # Top KPI Metrics Dashboard
-    dash_data = dx.get_compliance_dashboard(selected_cid, intents_override=intents_data)
+    dash_data = dx.get_compliance_dashboard(selected_cid, intents_override=intents_data) if intents_data else {}
     col_c1, col_c2, col_c3, col_c4, col_c5 = st.columns(5)
     with col_c1:
         st.metric("Total Clauses", len(intents_data))
     with col_c2:
-        conf_rate = dash_data.get("conformance_rate", 0.70)
+        conf_rate = float(dash_data.get("conformance_rate", 0.0))
         st.metric("Clause Verification Rate", f"{conf_rate:.1%}")
     with col_c3:
-        grade_top = dash_data.get("grade", "B")
-        st.metric("Compliance Grade", f"Grade {grade_top}")
+        grade_top = dash_data.get("grade", "N/A")
+        st.metric("Compliance Grade", f"Grade {grade_top}" if grade_top != "N/A" else "N/A")
     with col_c4:
         met_cnt = sum(1 for i in intents_data if i.get("implementation_status") in ("met", "fully_met"))
         st.metric("Fully Met", met_cnt)
     with col_c5:
         gap_cnt = sum(1 for i in intents_data if i.get("implementation_status") in ("gap", "not_met", "partially_met"))
         st.metric("Gaps & Partial", gap_cnt)
+
+    if not intents_data:
+        st.info("No intent clauses recorded for this checkpoint. Use the tools below to audit prompt specifications against code diffs.")
 
     st.divider()
 
@@ -2012,7 +1987,7 @@ with tab_c:
         conf_filter_thresh = st.slider("Min Confidence Filter", min_value=0.0, max_value=1.0, value=0.70, step=0.05, key="f3_conf_filter_slider")
 
     filtered_intents = dx.filter_conformance_by_confidence(intents_data, conf_filter_thresh) if conf_filter_thresh > 0 else intents_data
-    if conf_filter_thresh > 0:
+    if conf_filter_thresh > 0 and intents_data:
         st.info(f"Displaying {len(filtered_intents)} of {len(intents_data)} clauses with confidence >= {conf_filter_thresh:.0%}")
 
     # Feature C Visualizations & Conformance Breakdown
@@ -2048,9 +2023,12 @@ with tab_c:
 
         d_items = [{"name": k, "score": v * 100.0 if v <= 1.0 else v} for k, v in domain_scores.items()]
         top_domains = [d["name"] for d in d_items if d["score"] >= 90.0]
-        lowest = min(d_items, key=lambda d: d["score"]) if d_items else {"name": "Performance", "score": 68.0}
+        lowest = min(d_items, key=lambda d: d["score"]) if d_items else None
         top_str = " and ".join(top_domains) if top_domains else "No domains"
-        st.caption(f"**Conformance Takeaway**: {top_str} exceed 90% conformance. Active remediation targets {lowest['name']} ({lowest['score']:.1f}%).")
+        if lowest:
+            st.caption(f"**Conformance Takeaway**: {top_str} exceed 90% conformance. Active remediation targets {lowest['name']} ({lowest['score']:.1f}%).")
+        else:
+            st.caption(f"**Conformance Takeaway**: Awaiting intent conformance evaluation telemetry for this checkpoint.")
 
 
     # 2. Sub-Tabs for Feature 3 Capabilities
@@ -2983,28 +2961,7 @@ with tab_d:
             else:
                 conflicts_list = st.session_state.get(f"conflicts_{selected_cid}", [])
 
-        if not conflicts_list:
-            conflicts_list = [
-                {
-                    "id": "conf-auth-de-01",
-                    "checkpoint_id": selected_cid,
-                    "session_id": selected_session,
-                    "conflict_type": "requirement_vs_dead_end",
-                    "severity": "critical",
-                    "description": "Active requirement 'Ensure token expiry is validated' overlaps with recorded dead-end 'Token refresh race condition during concurrent HTTP requests'.",
-                    "involved_features": ["Feature B (Requirements)", "Feature A (Dead-End Registry)"],
-                    "resolution_strategies": [
-                        {
-                            "id": "strat_mutex",
-                            "name": "Distributed Mutex Lock",
-                            "description": "Adopt suggested fix: Implement Redis distributed lock around refresh routine to serialize token generation.",
-                            "effort": "medium",
-                            "impact": "high",
-                        }
-                    ],
-                    "resolved": st.session_state.get("conf_resolved_conf-auth-de-01", False),
-                }
-            ]
+
 
         total_c = len(conflicts_list)
         resolved_c = len([c for c in conflicts_list if c.get("resolved") or st.session_state.get(f"conflict_resolved_{c.get('id')}")])
@@ -3288,20 +3245,20 @@ with tab_d:
         eng = analytics.get("engagement", {})
         if not eng:
             eng = {
-                "avg_view_duration_seconds": 185.0,
-                "avg_scroll_depth_pct": 78.5,
-                "pdf_exports": 8,
-                "markdown_exports": 12,
-                "json_copies": 15
+                "avg_view_duration_seconds": 0.0,
+                "avg_scroll_depth_pct": 0.0,
+                "pdf_exports": 0,
+                "markdown_exports": 0,
+                "json_copies": 0
             }
 
-        total_loads_val = analytics.get("total_loads", 286)
+        total_loads_val = analytics.get("total_loads", 0)
         roi_hours_val = analytics.get("roi_hours_saved", round(total_loads_val * 2.5, 1))
 
         roi1, roi2, roi3, roi4 = st.columns(4)
         roi1.metric("Total Contract Loads", total_loads_val)
-        roi2.metric("Unique Consuming Agents/Users", analytics.get("unique_users", 8))
-        roi3.metric("Avg Loads / User", analytics.get("avg_loads_per_user", 35.8))
+        roi2.metric("Unique Consuming Agents/Users", analytics.get("unique_users", 0))
+        roi3.metric("Avg Loads / User", analytics.get("avg_loads_per_user", 0.0))
         roi4.metric("Time Saved ROI", f"{roi_hours_val} hrs", help="Estimated 2.5 hrs saved per resume by preventing dead-end repeats")
 
         roi_dollar_value = float(roi_hours_val) * 125.0
@@ -3309,9 +3266,9 @@ with tab_d:
 
         st.markdown("#### Consumer Channel Breakdown")
         c_col1, c_col2, c_col3 = st.columns(3)
-        c_col1.metric("Human UI Views", cb.get("human_ui_view", 142))
-        c_col2.metric("API Fetch", cb.get("api_fetch", 86))
-        c_col3.metric("Autonomous Agent Sessions", cb.get("agent_session", 58))
+        c_col1.metric("Human UI Views", cb.get("human_ui_view", 0))
+        c_col2.metric("API Fetch", cb.get("api_fetch", 0))
+        c_col3.metric("Autonomous Agent Sessions", cb.get("agent_session", 0))
 
         contract_channel_toggle = st.radio(
             "Channel Presentation Mode",
@@ -3337,7 +3294,7 @@ with tab_d:
         with d_vcol1:
             st.plotly_chart(lc.render_contract_funnel_chart(analytics.get("funnel")), use_container_width=True)
         with d_vcol2:
-            st.plotly_chart(lc.render_contract_engagement_heatmap(), use_container_width=True)
+            st.plotly_chart(lc.render_contract_engagement_heatmap(eng), use_container_width=True)
 
         d_rad_col1, d_rad_col2 = st.columns([3, 1])
         with d_rad_col2:
@@ -3379,9 +3336,9 @@ with tab_d:
             st.caption(f"**Contract Analytics Takeaway**: No consumption data available yet across {total_loads} loads. {version_clause}.")
 
         st.caption(
-            f"Average inspection duration: {eng.get('avg_view_duration_seconds', 185.0)}s | "
-            f"Average scroll depth: {eng.get('avg_scroll_depth_pct', 78.5)}% | "
-            f"Exports: {eng.get('pdf_exports', 8)} PDF, {eng.get('markdown_exports', 12)} MD, {eng.get('json_copies', 15)} JSON"
+            f"Average inspection duration: {float(eng.get('avg_view_duration_seconds', 0.0)):.1f}s | "
+            f"Average scroll depth: {float(eng.get('avg_scroll_depth_pct', 0.0)):.1f}% | "
+            f"Exports: {eng.get('pdf_exports', 0)} PDF, {eng.get('markdown_exports', 0)} MD, {eng.get('json_copies', 0)} JSON"
         )
 
 # ==============================================================================
