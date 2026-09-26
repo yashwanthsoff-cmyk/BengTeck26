@@ -13,6 +13,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 import importlib
+try:
+    import config
+except ImportError:
+    import types
+    import sys
+    cfg_mod = types.ModuleType("config")
+    def _get_sec(key, default=""):
+        try:
+            if hasattr(st, "secrets") and key in st.secrets:
+                return str(st.secrets[key])
+        except Exception:
+            pass
+        return os.environ.get(key, default)
+
+    cfg_mod.DATABRICKS_HOST = _get_sec("DATABRICKS_HOST", "")
+    cfg_mod.DATABRICKS_TOKEN = _get_sec("DATABRICKS_TOKEN", "")
+    cfg_mod.DATABRICKS_WAREHOUSE_ID = _get_sec("DATABRICKS_WAREHOUSE_ID", "")
+    cfg_mod.DATABRICKS_CATALOG = _get_sec("DATABRICKS_CATALOG", "checkpoint_dx")
+    cfg_mod.DATABRICKS_SCHEMA = _get_sec("DATABRICKS_SCHEMA", "checkpoints")
+    cfg_mod.DATABRICKS_USER = _get_sec("DATABRICKS_USER", "default")
+    cfg_mod.DATABRICKS_CLUSTER_ID = _get_sec("DATABRICKS_CLUSTER_ID", "")
+    cfg_mod.PROJECT_NAME = _get_sec("PROJECT_NAME", "checkpoint-dx")
+    cfg_mod.SUPABASE_URL = _get_sec("SUPABASE_URL", "")
+    cfg_mod.SUPABASE_ANON_KEY = _get_sec("SUPABASE_ANON_KEY", "")
+    cfg_mod.SUPABASE_SERVICE_KEY = _get_sec("SUPABASE_SERVICE_KEY", "")
+    cfg_mod.GROQ_API_KEY = _get_sec("GROQ_API_KEY", "")
+    cfg_mod.GROQ_MODEL = _get_sec("GROQ_MODEL", "openai/gpt-oss-120b")
+    sys.modules["config"] = cfg_mod
+    config = cfg_mod
+
 from lib.checkpoint_dx import CheckpointDX, DeadEnd, Intent
 import lib.charts as lc
 importlib.reload(lc)
