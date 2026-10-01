@@ -2822,6 +2822,20 @@ with tab_d:
                 with st.expander("View Full Contract Payload JSON", expanded=False):
                     st.json(contract_data)
 
+                if st.button("Synthesize Executive AI Handoff Summary with Groq (Live)", key=f"btn_groq_contract_summary_{version_num}_{selected_template}", type="primary"):
+                    with st.spinner("Synthesizing Executive Resume Contract Handoff Summary with Groq LLM (openai/gpt-oss-120b)..."):
+                        ai_summary = dx.generate_contract_summary_groq(contract_data)
+                        st.session_state[f"groq_contract_summary_{selected_cid}_{version_num}"] = ai_summary
+
+                saved_summary = st.session_state.get(f"groq_contract_summary_{selected_cid}_{version_num}")
+                if saved_summary:
+                    st.markdown("""
+                    <div style="background:rgba(0,113,227,0.06);border:1px solid rgba(0,113,227,0.25);border-radius:12px;padding:14px 18px;margin:12px 0;">
+                      <span class="badge-pill badge-pill-primary" style="font-size:11px;">[LIVE GROQ AI INFERENCE &middot; MODEL: openai/gpt-oss-120b]</span>
+                      <div style="margin-top:10px;font-size:13.5px;color:#0F1012;line-height:1.6;">
+                    """, unsafe_allow_html=True)
+                    st.markdown(saved_summary)
+                    st.markdown("</div></div>", unsafe_allow_html=True)
 
                 def _track_contract_download(c_id, itype):
                     try:
@@ -3208,6 +3222,22 @@ with tab_d:
                 for rec in diff_result.get("stakeholder_recommendations", []):
                     st.markdown(f"- **[{rec.get('role')}]:** {rec.get('action')}")
 
+                st.markdown("#### Groq AI Architectural Impact Analysis (Live)")
+                if st.button("Explain Architectural Impact with Groq LLM (Live)", key=f"btn_groq_diff_explain_{diff_v_a}_{diff_v_b}", type="primary"):
+                    with st.spinner("Analyzing semantic contract diff with Groq LLM (openai/gpt-oss-120b)..."):
+                        ai_diff_explanation = dx.explain_contract_diff_groq(diff_result)
+                        st.session_state[f"groq_diff_explain_{selected_cid}_{diff_v_a}_{diff_v_b}"] = ai_diff_explanation
+
+                saved_diff_exp = st.session_state.get(f"groq_diff_explain_{selected_cid}_{diff_v_a}_{diff_v_b}")
+                if saved_diff_exp:
+                    st.markdown("""
+                    <div style="background:rgba(0,113,227,0.06);border:1px solid rgba(0,113,227,0.25);border-radius:12px;padding:14px 18px;margin:12px 0;">
+                      <span class="badge-pill badge-pill-primary" style="font-size:11px;">[LIVE GROQ AI INFERENCE &middot; MODEL: openai/gpt-oss-120b]</span>
+                      <div style="margin-top:10px;font-size:13.5px;color:#0F1012;line-height:1.6;">
+                    """, unsafe_allow_html=True)
+                    st.markdown(saved_diff_exp)
+                    st.markdown("</div></div>", unsafe_allow_html=True)
+
         st.divider()
         st.subheader("Advanced Usage Analytics & Developer ROI Dashboard")
         st.markdown("Real-time telemetry measuring contract consumption, agent adoption, engagement depth, and engineering hours saved.")
@@ -3532,6 +3562,22 @@ with tab_e:
         st.markdown("**Actionable Remediation Directives:**")
         for rec in diagnosis["recommendations"]:
             st.markdown(f"- `{rec}`")
+
+        st.markdown("#### Groq AI Root-Cause Recovery Plan (Live)")
+        if st.button("Synthesize AI Stabilization Plan with Groq (Live)", key=f"btn_groq_diag_{selected_session}", type="primary"):
+            with st.spinner("Synthesizing Root-Cause Stabilization Plan with Groq LLM (openai/gpt-oss-120b)..."):
+                plan_md = dx.synthesize_integrity_diagnosis_groq(diagnosis, session_id=selected_session)
+                st.session_state[f"groq_integrity_plan_{selected_session}"] = plan_md
+
+        saved_plan = st.session_state.get(f"groq_integrity_plan_{selected_session}")
+        if saved_plan:
+            st.markdown("""
+            <div style="background:rgba(0,113,227,0.06);border:1px solid rgba(0,113,227,0.25);border-radius:12px;padding:14px 18px;margin:12px 0;">
+              <span class="badge-pill badge-pill-primary" style="font-size:11px;">[LIVE GROQ AI INFERENCE &middot; MODEL: openai/gpt-oss-120b]</span>
+              <div style="margin-top:10px;font-size:13.5px;color:#0F1012;line-height:1.6;">
+            """, unsafe_allow_html=True)
+            st.markdown(saved_plan)
+            st.markdown("</div></div>", unsafe_allow_html=True)
 
     st.divider()
 

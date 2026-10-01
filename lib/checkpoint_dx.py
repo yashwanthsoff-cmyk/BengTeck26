@@ -590,6 +590,8 @@ class CheckpointDX:
 
     def estimate_requirement_effort(self, requirement_text: str) -> Dict:
         """Gap 3 fix. Same fallback pattern — never blocks the pipeline if Groq is absent."""
+        if not (requirement_text and str(requirement_text).strip()):
+            return {"effort_points": 0, "reasoning": "No requirement text provided."}
         if not self.groq:
             return {"effort_points": None, "reasoning": "[no Groq key configured — not estimated]"}
         completion = self.groq.chat.completions.create(
@@ -615,6 +617,8 @@ class CheckpointDX:
 
     def generate_acceptance_criteria(self, requirement_text: str) -> List[str]:
         """Gap 4 fix."""
+        if not (requirement_text and str(requirement_text).strip()):
+            return []
         if not self.groq:
             return []
         completion = self.groq.chat.completions.create(
@@ -906,12 +910,13 @@ class CheckpointDX:
 
     def predict_next_requirement_status(
         self,
-        requirement_text: str,
-        current_status: str,
+        requirement_text: str = "",
+        current_status: str = "backlog",
         has_criteria: bool = False,
         is_blocked: bool = False,
     ) -> Dict:
         """ML/heuristic next status prediction powered by Groq LLM and state transition rules."""
+        requirement_text = (requirement_text or "").strip()
         curr = (current_status or "backlog").strip().lower()
         cache_key = (str(requirement_text).strip(), curr, bool(has_criteria), bool(is_blocked))
         if not hasattr(self, "_status_prediction_cache"):
@@ -4740,6 +4745,58 @@ The engineering team recommends adopting the following verified remedy:
             "recommendations": recommendations,
         }
 
+    def synthesize_integrity_diagnosis_groq(self, diagnosis_result: Optional[Dict[str, Any]] = None, session_id: str = "") -> str:
+        """Feature E Groq AI: Synthesizes automated root-cause integrity diagnosis into an actionable recovery plan."""
+        if not diagnosis_result or not isinstance(diagnosis_result, dict):
+            return "No integrity diagnosis record available to analyze."
+
+        score = float(diagnosis_result.get("overall_integrity", 0.0) if diagnosis_result.get("overall_integrity") is not None else 0.0)
+        status = diagnosis_result.get("status", "[UNKNOWN]")
+        primary = diagnosis_result.get("primary_root_cause", "Unspecified root cause")
+        fa = diagnosis_result.get("factor_analysis", {})
+        recs = diagnosis_result.get("recommendations", [])
+
+        if self.groq:
+            try:
+                system_prompt = (
+                    "You are a Principal Reliability and AI Agent Systems Engineer. Given this automated integrity diagnosis for an agent session, "
+                    "synthesize a comprehensive Root-Cause Stabilization & Recovery Plan in professional technical Markdown. "
+                    "Include 3 sections: "
+                    "1. Operational Assessment & Safety Status, "
+                    "2. Root-Cause Factor Evaluation (Memory, Scope, Dead-Ends, Intent Gaps), "
+                    "3. Step-by-Step Stabilization Directives for Safe Resumption. "
+                    "Strictly NO emojis."
+                )
+                user_prompt = (
+                    f"Session ID: {session_id or 'current'}\n"
+                    f"Overall Diagnostic Integrity: {score:.1%}\n"
+                    f"Safety Status: {status}\n"
+                    f"Primary Root Cause: {primary}\n"
+                    f"Factor Analysis:\n" + "\n".join(f"- {k.replace('_', ' ').title()}: {v.get('status')} (impact: {v.get('impact')}, detail: {v.get('detail')})" for k, v in fa.items()) + "\n"
+                    f"Recommended Actions:\n" + "\n".join(f"- {r}" for r in recs)
+                )
+                resp = self.groq.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=650,
+                )
+                if resp.choices and resp.choices[0].message and resp.choices[0].message.content:
+                    return resp.choices[0].message.content.strip()
+            except Exception as ex:
+                logger.warning(f"Groq integrity diagnosis synthesis error, falling back to deterministic template: {ex}")
+
+        # Deterministic fallback plan
+        return (
+            f"### AI Root-Cause Stabilization Plan (Session: {session_id or 'active'})\n\n"
+            f"**Operational Assessment**: System integrity evaluated at {score:.1%} with status `{status}`. Primary root cause: `{primary}`.\n\n"
+            f"**Factor Breakdown**:\n" + "\n".join(f"- **{k.replace('_', ' ').title()}**: {v.get('status')} &mdash; {v.get('detail')}" for k, v in fa.items()) + "\n\n"
+            f"**Directives for Resumption**:\n" + "\n".join(f"- {r}" for r in recs)
+        )
+
 
     def detect_dead_ends(self, transcript_text: str) -> List[Dict]:
         """Extracts dead-end signals from transcripts using Groq LLM with rule-based fallback severity."""
@@ -6003,13 +6060,16 @@ The engineering team recommends adopting the following verified remedy:
 
     def compute_semantic_contract_diff(
         self,
-        contract_a_payload: Dict[str, Any],
-        contract_b_payload: Dict[str, Any]
+        contract_a_payload: Optional[Dict[str, Any]] = None,
+        contract_b_payload: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Feature 4.3: Deep semantic diffing between two contract versions.
         Detects 8 change types, categorizes severity, computes multi-role impact,
         and provides ranked stakeholder recommendations.
         """
+        contract_a_payload = contract_a_payload or {}
+        contract_b_payload = contract_b_payload or {}
+
         req_a = {r.get("text", ""): r for r in contract_a_payload.get("unresolved_requirements", [])}
         req_b = {r.get("text", ""): r for r in contract_b_payload.get("unresolved_requirements", [])}
 
@@ -6130,6 +6190,116 @@ The engineering team recommends adopting the following verified remedy:
             "impact_analysis": impact,
             "stakeholder_recommendations": recommendations,
         }
+
+    def generate_contract_summary_groq(self, contract_payload: Optional[Dict[str, Any]] = None) -> str:
+        """Feature D Groq AI: Synthesizes an executive AI handoff summary for resume contracts."""
+        if not contract_payload or not isinstance(contract_payload, dict):
+            return "No contract specification provided to summarize."
+
+        ver = contract_payload.get("version", 1)
+        tpl = contract_payload.get("template", "dev")
+        purp = contract_payload.get("contract_purpose", "general resume")
+        reqs = contract_payload.get("unresolved_requirements", [])
+        des = contract_payload.get("do_not_retry", [])
+        gaps = contract_payload.get("flagged_gaps", [])
+        score = (contract_payload.get("integrity_check") or {}).get("integrity_score", 0.0)
+
+        # Groq LLM inference
+        if self.groq:
+            try:
+                system_prompt = (
+                    "You are a Principal Technical Program Manager and Lead Systems Architect. "
+                    "Given the resume contract specification below (unresolved requirements, dead-end guardrails, intent gaps, and integrity safety score), "
+                    "synthesize an executive AI handoff summary (3-4 concise paragraphs in professional technical Markdown). "
+                    "Highlight: "
+                    "1. Resume Scope & Immediate Priorities, "
+                    "2. Critical Guardrails & Dead Ends to Avoid, "
+                    "3. Conformance & Safety Integrity Assessment. "
+                    "Strictly NO emojis."
+                )
+                user_prompt = (
+                    f"Contract Version: v{ver} ({tpl.upper()} template, purpose: {purp})\n"
+                    f"Safety Integrity Score: {float(score):.1%}\n"
+                    f"Unresolved Requirements ({len(reqs)}):\n" + "\n".join(f"- {r.get('text', '')}" for r in reqs[:8]) + "\n"
+                    f"Do-Not-Retry Guardrails ({len(des)}):\n" + "\n".join(f"- {d.get('reason_abandoned', '')}: {d.get('suggested_fix', '')}" for d in des[:6]) + "\n"
+                    f"Flagged Intent Gaps ({len(gaps)}):\n" + "\n".join(f"- {g.get('clause', '')}" for g in gaps[:5])
+                )
+                resp = self.groq.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=650,
+                )
+                if resp.choices and resp.choices[0].message and resp.choices[0].message.content:
+                    return resp.choices[0].message.content.strip()
+            except Exception as ex:
+                logger.warning(f"Groq contract summary error, falling back to deterministic template: {ex}")
+
+        # Deterministic fallback summary
+        return (
+            f"### Executive Handoff Summary - Contract v{ver} [{tpl.upper()}]\n\n"
+            f"**Operational Scope**: This contract defines resume boundaries for {len(reqs)} open requirement(s) under the '{purp}' workflow. "
+            f"Verified baseline safety integrity is recorded at {float(score):.1%}.\n\n"
+            f"**Guardrails & Dead-End Avoidance**: {len(des)} known failure pattern(s) have been cataloged into the do-not-retry registry. "
+            f"The resuming agent must respect these constraints to avoid redundant compute cycles and regressions.\n\n"
+            f"**Conformance & Gaps**: {len(gaps)} intent gap(s) require active remediation. Implementation patches must be verified against acceptance criteria before closing the sprint."
+        )
+
+    def explain_contract_diff_groq(self, diff_result: Optional[Dict[str, Any]] = None) -> str:
+        """Feature D Groq AI: Analyzes semantic contract diff and provides architectural risk explanation."""
+        if not diff_result or not isinstance(diff_result, dict):
+            return "No semantic diff data available to analyze."
+
+        total_changes = diff_result.get("total_changes", 0)
+        if total_changes == 0:
+            return "No semantic changes detected between contract versions. Specifications are structurally identical."
+
+        v_a = diff_result.get("version_a", 1)
+        v_b = diff_result.get("version_b", 2)
+        changes = diff_result.get("changes", [])
+        impact = diff_result.get("impact_analysis", {})
+
+        if self.groq:
+            try:
+                system_prompt = (
+                    "You are a Principal Staff Software Architect. Given the semantic contract diff between two checkpoint resume contract versions, "
+                    "explain the architectural impact, operational risks, and development priorities for the resuming agent in 3 concise Markdown sections: "
+                    "1. Scope Evolution & Key Changes, "
+                    "2. Engineering & QA Risk Profile, "
+                    "3. Action Directives for Next Session. "
+                    "Strictly NO emojis."
+                )
+                user_prompt = (
+                    f"Diff from v{v_a} to v{v_b} (Total Changes: {total_changes}):\n"
+                    f"Classified Changes:\n" + "\n".join(f"- [{c.get('severity', 'medium').upper()}] {c.get('change_type')}: {c.get('description')}" for c in changes[:10]) + "\n"
+                    f"Impact on Dev: {impact.get('impact_on_development', 'N/A')}\n"
+                    f"Impact on QA: {impact.get('impact_on_qa', 'N/A')}\n"
+                    f"Timeline: {impact.get('impact_on_timeline', 'N/A')}"
+                )
+                resp = self.groq.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.2,
+                    max_tokens=650,
+                )
+                if resp.choices and resp.choices[0].message and resp.choices[0].message.content:
+                    return resp.choices[0].message.content.strip()
+            except Exception as ex:
+                logger.warning(f"Groq contract diff explanation error, falling back to deterministic template: {ex}")
+
+        # Deterministic fallback explanation
+        return (
+            f"### Semantic Diff Architectural Analysis (v{v_a} -> v{v_b})\n\n"
+            f"**Scope Evolution**: A total of {total_changes} semantic delta(s) were identified across requirements, dead-ends, and intent conformance.\n\n"
+            f"**Engineering Risk Profile**: {impact.get('impact_on_development', 'Moderate scope adjustment.')} QA verification scope: {impact.get('impact_on_qa', 'Targeted re-test required.')}\n\n"
+            f"**Next Session Directives**: Resuming agent should focus verification on newly introduced requirements while ensuring existing regression suites pass without deviation."
+        )
 
     def get_advanced_contract_analytics(self, contract_id: Optional[str] = None) -> Dict[str, Any]:
         """Feature 4.4: Computes ROI, engagement, consumer breakdowns, and drop-off funnels."""

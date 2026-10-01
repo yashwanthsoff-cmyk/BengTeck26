@@ -2265,6 +2265,120 @@ class TestCheckpointDX(unittest.TestCase):
             self.assertEqual(res["session_count"], 1)
             self.assertEqual(res["coverage_ratio"], 1.0)
 
+    def test_feature_d_generate_contract_summary_groq(self):
+        """Feature D: Verify Groq contract summary synthesis with live mock and fallback."""
+        dx = CheckpointDX()
+        # Negative case: None payload
+        res_none = dx.generate_contract_summary_groq(None)
+        self.assertIn("No contract specification provided", res_none)
+
+        # Valid payload with mocked Groq
+        mock_payload = {
+            "version": 1,
+            "template": "dev",
+            "contract_purpose": "feature_completion",
+            "unresolved_requirements": [{"text": "OAuth flow"}],
+            "do_not_retry": [{"reason_abandoned": "Redis timeout", "suggested_fix": "Use stateless"}],
+            "flagged_gaps": [{"clause": "CSRF token check"}],
+            "integrity_check": {"integrity_score": 0.85},
+        }
+        mock_groq = MagicMock()
+        mock_groq.chat.completions.create.return_value.choices = [
+            MagicMock(message=MagicMock(content="Executive AI handoff summary for resuming agent."))
+        ]
+        dx.groq = mock_groq
+        res_groq = dx.generate_contract_summary_groq(mock_payload)
+        self.assertIn("Executive AI handoff summary", res_groq)
+
+        # Fallback when Groq throws
+        mock_groq.chat.completions.create.side_effect = RuntimeError("Groq API error")
+        res_fallback = dx.generate_contract_summary_groq(mock_payload)
+        self.assertIn("Executive Handoff Summary - Contract v1 [DEV]", res_fallback)
+
+    def test_feature_d_explain_contract_diff_groq(self):
+        """Feature D: Verify Groq semantic contract diff explanation with live mock and fallback."""
+        dx = CheckpointDX()
+        # Negative case: None diff
+        res_none = dx.explain_contract_diff_groq(None)
+        self.assertIn("No semantic diff data available", res_none)
+
+        # Negative case: zero changes
+        res_zero = dx.explain_contract_diff_groq({"total_changes": 0})
+        self.assertIn("No semantic changes detected", res_zero)
+
+        # Valid diff with mocked Groq
+        mock_diff = {
+            "version_a": 1,
+            "version_b": 2,
+            "total_changes": 2,
+            "changes": [
+                {"change_type": "requirement_added", "severity": "major", "description": "New requirement added."}
+            ],
+            "impact_analysis": {"impact_on_development": "Scope expanded"},
+        }
+        mock_groq = MagicMock()
+        mock_groq.chat.completions.create.return_value.choices = [
+            MagicMock(message=MagicMock(content="Architectural impact assessment indicates manageable risk."))
+        ]
+        dx.groq = mock_groq
+        res_groq = dx.explain_contract_diff_groq(mock_diff)
+        self.assertIn("Architectural impact assessment", res_groq)
+
+        # Fallback when Groq throws
+        mock_groq.chat.completions.create.side_effect = RuntimeError("Groq API error")
+        res_fallback = dx.explain_contract_diff_groq(mock_diff)
+        self.assertIn("Semantic Diff Architectural Analysis (v1 -> v2)", res_fallback)
+
+    def test_feature_e_synthesize_integrity_diagnosis_groq(self):
+        """Feature E: Verify Groq integrity diagnosis recovery plan synthesis with live mock and fallback."""
+        dx = CheckpointDX()
+        # Negative case: None diagnosis
+        res_none = dx.synthesize_integrity_diagnosis_groq(None)
+        self.assertIn("No integrity diagnosis record available", res_none)
+
+        # Valid diagnosis with mocked Groq
+        mock_diag = {
+            "overall_integrity": 0.75,
+            "status": "[ATTENTION]",
+            "primary_root_cause": "Moderate memory staleness",
+            "factor_analysis": {
+                "memory_coverage": {"status": "[SAFE]", "impact": 0.0, "detail": "Coverage OK"},
+            },
+            "recommendations": ["Re-index session memory"],
+        }
+        mock_groq = MagicMock()
+        mock_groq.chat.completions.create.return_value.choices = [
+            MagicMock(message=MagicMock(content="AI Root-Cause Stabilization Plan detailing 3 directives."))
+        ]
+        dx.groq = mock_groq
+        res_groq = dx.synthesize_integrity_diagnosis_groq(mock_diag, session_id="test-sess")
+        self.assertIn("AI Root-Cause Stabilization Plan", res_groq)
+
+        # Fallback when Groq throws
+        mock_groq.chat.completions.create.side_effect = RuntimeError("Groq API error")
+        res_fallback = dx.synthesize_integrity_diagnosis_groq(mock_diag, session_id="test-sess")
+        self.assertIn("AI Root-Cause Stabilization Plan (Session: test-sess)", res_fallback)
+
+    def test_negative_cases_hardened(self):
+        """Negative cases: Verify methods handle empty, blank, and None inputs without exceptions."""
+        dx = CheckpointDX()
+        # 1. Effort estimation on empty string
+        eff = dx.estimate_requirement_effort("")
+        self.assertEqual(eff["effort_points"], 0)
+        self.assertIn("No requirement text provided", eff["reasoning"])
+
+        # 2. Acceptance criteria on empty string
+        crit = dx.generate_acceptance_criteria("")
+        self.assertEqual(crit, [])
+
+        # 3. Predict next status without current_status argument
+        pred = dx.predict_next_requirement_status("")
+        self.assertIn("predicted_status", pred)
+
+        # 4. Compute semantic contract diff with None inputs
+        diff = dx.compute_semantic_contract_diff(None, None)
+        self.assertEqual(diff["total_changes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
