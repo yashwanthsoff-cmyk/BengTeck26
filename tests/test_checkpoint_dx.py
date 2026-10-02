@@ -2379,6 +2379,23 @@ class TestCheckpointDX(unittest.TestCase):
         diff = dx.compute_semantic_contract_diff(None, None)
         self.assertEqual(diff["total_changes"], 0)
 
+    def test_pipeline_methods_exist_and_return_valid_types(self):
+        """Verify get_checkpoints, get_sprint_burndown_variance, and get_conformance_trajectory return valid structures."""
+        dx = CheckpointDX()
+        # get_checkpoints
+        cps = dx.get_checkpoints()
+        self.assertIsInstance(cps, list)
+
+        # get_sprint_burndown_variance
+        burndown = dx.get_sprint_burndown_variance("chk-001")
+        self.assertIsInstance(burndown, dict)
+        self.assertIn("ideal", burndown)
+        self.assertIn("actual", burndown)
+
+        # get_conformance_trajectory
+        traj = dx.get_conformance_trajectory("chk-001")
+        self.assertIsInstance(traj, list)
+
 
 if __name__ == "__main__":
     unittest.main()

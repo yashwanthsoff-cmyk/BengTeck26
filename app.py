@@ -476,8 +476,8 @@ st.markdown("""
 # ==============================================================================
 with st.container():
     # Pull real historical trajectory series per stage (Master Rule #2)
-    s1_all_cps = dx.get_checkpoints() or []
-    s1_spark = [float(len(dx.get_dead_ends(cp.get("id")))) for cp in s1_all_cps[:5]] if s1_all_cps else []
+    s1_all_cps = (dx.get_checkpoints() if hasattr(dx, "get_checkpoints") else None) or checkpoints or []
+    s1_spark = [float(len(dx.get_dead_ends(cp.get("id") or cp.get("checkpoint_id")))) for cp in s1_all_cps[:5]] if s1_all_cps else []
     s2_burndown = dx.get_sprint_burndown_variance(selected_cid) if hasattr(dx, 'get_sprint_burndown_variance') else {}
     s2_spark = [float(v) for v in (s2_burndown.get("actual") or [])]
     s3_conf = dx.get_conformance_trajectory(selected_cid) if hasattr(dx, 'get_conformance_trajectory') else []
