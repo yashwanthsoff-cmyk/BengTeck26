@@ -1000,7 +1000,7 @@ with tab_a:
                 with cl_tab1:
                     cluster_options = {f"{c['display_name']} ({c['cluster_key']})": c for c in clusters_trend}
                     sel_cluster_name = st.selectbox("Select Cluster to Inspect / Rename:", list(cluster_options.keys()), key="sb_cluster_rename")
-                    target_c = cluster_options[sel_cluster_name]
+                    target_c = cluster_options.get(sel_cluster_name, {})
 
                     col_ai_btn, col_ai_save = st.columns([1, 1])
                     with col_ai_btn:
@@ -1014,7 +1014,7 @@ with tab_a:
                                 st.session_state["cluster_ai_name"] = ai_res.get("suggested_name")
                                 st.session_state["cluster_ai_reasoning"] = ai_res.get("reasoning")
 
-                    suggested_val = st.session_state.get("cluster_ai_name") or target_c.get("display_name")
+                    suggested_val = st.session_state.get("cluster_ai_name") or target_c.get("display_name", "")
                     if st.session_state.get("cluster_ai_reasoning"):
                         st.info(f"AI Reasoning: {st.session_state['cluster_ai_reasoning']}")
 
@@ -1040,9 +1040,11 @@ with tab_a:
                         target_opt = st.selectbox("Target Cluster (destination):", list(cluster_options.keys()), index=tgt_default_idx, key="sb_merge_tgt")
 
                     if st.button("Merge Clusters", key="btn_execute_merge"):
-                        src_id = cluster_options[source_opt].get("id") or cluster_options[source_opt].get("cluster_key")
-                        tgt_id = cluster_options[target_opt].get("id") or cluster_options[target_opt].get("cluster_key")
-                        if src_id == tgt_id:
+                        src_id = cluster_options.get(source_opt, {}).get("id") or cluster_options.get(source_opt, {}).get("cluster_key")
+                        tgt_id = cluster_options.get(target_opt, {}).get("id") or cluster_options.get(target_opt, {}).get("cluster_key")
+                        if not src_id or not tgt_id:
+                            st.warning("Please select valid source and target clusters to merge.")
+                        elif src_id == tgt_id:
                             st.warning("Source and Target cluster cannot be the same. Select two distinct clusters.")
                         else:
                             m_res = dx.merge_clusters(src_id, tgt_id)
@@ -1060,7 +1062,7 @@ with tab_a:
 
                     if st.button("Generate RCA Report", key="btn_gen_rca"):
                         with st.spinner("Synthesizing Root Cause Analysis post-mortem report with Groq LLM..."):
-                            cid = cluster_options[rca_cluster_sel].get("id") or cluster_options[rca_cluster_sel].get("cluster_key")
+                            cid = cluster_options.get(rca_cluster_sel, {}).get("id") or cluster_options.get(rca_cluster_sel, {}).get("cluster_key")
                             report_md = dx.generate_rca_report(cluster_id=cid, template=tmpl_key)
                             st.session_state["generated_rca_md"] = report_md
 
@@ -1070,7 +1072,7 @@ with tab_a:
                         st.download_button(
                             label="Download RCA Report (.md)",
                             data=st.session_state["generated_rca_md"],
-                            file_name=f"RCA_Report_{cluster_options[rca_cluster_sel].get('cluster_key')}.md",
+                            file_name=f"RCA_Report_{cluster_options.get(rca_cluster_sel, {}).get('cluster_key', 'pattern')}.md",
                             mime="text/markdown",
                             key="btn_dl_rca"
                         )

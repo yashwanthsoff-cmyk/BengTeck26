@@ -546,17 +546,17 @@ class CheckpointDX:
         default (P2/should) if Groq isn't configured, rather than blocking."""
         if not self.groq:
             return {"priority_tier": "P2", "moscow": "should", "reasoning": "[no Groq key configured — default applied, not scored]"}
-        completion = self.groq.chat.completions.create(
-            model=self.groq_model,
-            messages=[{"role": "system", "content": (
-                "Score this software requirement's priority. Return ONLY a JSON object with keys: "
-                "priority_tier (P0=critical/blocking, P1=important, P2=nice-to-have), "
-                "moscow (must/should/could/wont), reasoning (one sentence, cite the requirement's own wording, "
-                "do not invent context not present in the text)."
-            )}, {"role": "user", "content": f"Requirement: {requirement_text}\nContext: {checkpoint_context}"}],
-            temperature=0,
-        )
         try:
+            completion = self.groq.chat.completions.create(
+                model=self.groq_model,
+                messages=[{"role": "system", "content": (
+                    "Score this software requirement's priority. Return ONLY a JSON object with keys: "
+                    "priority_tier (P0=critical/blocking, P1=important, P2=nice-to-have), "
+                    "moscow (must/should/could/wont), reasoning (one sentence, cite the requirement's own wording, "
+                    "do not invent context not present in the text)."
+                )}, {"role": "user", "content": f"Requirement: {requirement_text}\nContext: {checkpoint_context}"}],
+                temperature=0,
+            )
             content = completion.choices[0].message.content.strip()
             if "```" in content:
                 content = re.sub(r"^```(?:json)?", "", content, flags=re.MULTILINE)
@@ -648,15 +648,15 @@ class CheckpointDX:
             return {"effort_points": 0, "reasoning": "No requirement text provided."}
         if not self.groq:
             return {"effort_points": None, "reasoning": "[no Groq key configured — not estimated]"}
-        completion = self.groq.chat.completions.create(
-            model=self.groq_model,
-            messages=[{"role": "system", "content": (
-                "Estimate this requirement's effort in story points (1, 2, 3, 5, 8, 13 — Fibonacci scale). "
-                "Return ONLY a JSON object with keys: effort_points (integer from the scale above), reasoning (one sentence)."
-            )}, {"role": "user", "content": requirement_text}],
-            temperature=0,
-        )
         try:
+            completion = self.groq.chat.completions.create(
+                model=self.groq_model,
+                messages=[{"role": "system", "content": (
+                    "Estimate this requirement's effort in story points (1, 2, 3, 5, 8, 13 — Fibonacci scale). "
+                    "Return ONLY a JSON object with keys: effort_points (integer from the scale above), reasoning (one sentence)."
+                )}, {"role": "user", "content": requirement_text}],
+                temperature=0,
+            )
             content = completion.choices[0].message.content.strip()
             if "```" in content:
                 content = re.sub(r"^```(?:json)?", "", content, flags=re.MULTILINE)
@@ -675,16 +675,16 @@ class CheckpointDX:
             return []
         if not self.groq:
             return []
-        completion = self.groq.chat.completions.create(
-            model=self.groq_model,
-            messages=[{"role": "system", "content": (
-                "Write 2-4 concrete, testable acceptance criteria for this requirement — "
-                "each a single sentence describing an observable condition that proves it's done. "
-                "Return ONLY a JSON array of strings."
-            )}, {"role": "user", "content": requirement_text}],
-            temperature=0,
-        )
         try:
+            completion = self.groq.chat.completions.create(
+                model=self.groq_model,
+                messages=[{"role": "system", "content": (
+                    "Write 2-4 concrete, testable acceptance criteria for this requirement — "
+                    "each a single sentence describing an observable condition that proves it's done. "
+                    "Return ONLY a JSON array of strings."
+                )}, {"role": "user", "content": requirement_text}],
+                temperature=0,
+            )
             content = completion.choices[0].message.content.strip()
             if "```" in content:
                 content = re.sub(r"^```(?:json)?", "", content, flags=re.MULTILINE)
@@ -818,18 +818,18 @@ class CheckpointDX:
         if not self.groq or len(requirements) < 2:
             return []
         numbered = "\n".join(f"{i}: {r['requirement_text']}" for i, r in enumerate(requirements))
-        completion = self.groq.chat.completions.create(
-            model=self.groq_model,
-            messages=[{"role": "system", "content": (
-                "Given this numbered list of requirements from the same checkpoint, identify any "
-                "genuine dependency — where one requirement's wording implies it must happen before "
-                "another (e.g. 'add the queue' before 'process items from the queue'). "
-                "Return ONLY a JSON array of objects: {from_index, depends_on_index, reasoning}. "
-                "Return [] if no real dependency is evident — do not invent one for plausibility."
-            )}, {"role": "user", "content": numbered}],
-            temperature=0,
-        )
         try:
+            completion = self.groq.chat.completions.create(
+                model=self.groq_model,
+                messages=[{"role": "system", "content": (
+                    "Given this numbered list of requirements from the same checkpoint, identify any "
+                    "genuine dependency — where one requirement's wording implies it must happen before "
+                    "another (e.g. 'add the queue' before 'process items from the queue'). "
+                    "Return ONLY a JSON array of objects: {from_index, depends_on_index, reasoning}. "
+                    "Return [] if no real dependency is evident — do not invent one for plausibility."
+                )}, {"role": "user", "content": numbered}],
+                temperature=0,
+            )
             content = completion.choices[0].message.content.strip()
             if "```" in content:
                 content = re.sub(r"^```(?:json)?", "", content, flags=re.MULTILINE)
