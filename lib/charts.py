@@ -297,48 +297,74 @@ def render_metric_sparkline_svg(
     Per Master Spec: Line color dynamically reflects trend direction:
     green if improving, red if declining, neutral grey if flat.
     """
-    if not data_points or len(data_points) < min_points:
-        # Refined Insufficient Data SVG state with dashed frame and clean text
-        return (
-            f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" style="vertical-align:middle;display:inline-block;">'
-            f'<rect x="1" y="1" width="{width-2}" height="{height-2}" rx="3" fill="rgba(248,250,252,0.6)" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="2,2"/>'
-            f'<text x="{width/2}" y="{height/2 + 3}" font-family="{FONT_FAMILY}" font-size="8" fill="#8E8E93" font-weight="600" text-anchor="middle">&lt;5 PTS</text>'
-            f'</svg>'
-        )
-
-    # Determine trend color if not explicitly provided
-    if color is None:
-        diff = data_points[-1] - data_points[0]
-        spread = max(data_points) - min(data_points)
-        effective_diff = -diff if is_burndown else diff
-        if spread > 0 and abs(diff) / spread > 0.05:
-            stroke_color = COLORS["success"] if effective_diff > 0 else COLORS["danger"]
-        else:
-            stroke_color = COLORS["neutral"]
-    else:
-        stroke_color = color
-
-    min_v = min(data_points)
-    max_v = max(data_points)
-    spread = (max_v - min_v) if max_v != min_v else 1.0
-
-    coords = []
-    step_x = (width - 8) / (len(data_points) - 1)
-    for i, v in enumerate(data_points):
-        x = round(4 + i * step_x, 1)
-        y = round((height - 4) - ((v - min_v) / spread) * (height - 8), 1)
-        coords.append((x, y))
-
-    polyline_pts = " ".join(f"{x},{y}" for x, y in coords)
-    last_x, last_y = coords[-1]
-
-    svg = (
-        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" style="vertical-align:middle;display:inline-block;overflow:visible;">'
-        f'<polyline fill="none" stroke="{stroke_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="{polyline_pts}" />'
-        f'<circle cx="{last_x}" cy="{last_y}" r="3" fill="{stroke_color}" />'
+    fallback_svg = (
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" style="vertical-align:middle;display:inline-block;">'
+        f'<rect x="1" y="1" width="{width-2}" height="{height-2}" rx="3" fill="rgba(248,250,252,0.6)" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="2,2"/>'
+        f'<text x="{width/2}" y="{height/2 + 3}" font-family="{FONT_FAMILY}" font-size="8" fill="#8E8E93" font-weight="600" text-anchor="middle">&lt;5 PTS</text>'
         f'</svg>'
     )
-    return svg
+
+    # Sanitize and extract float data points from lists, tuples, or metadata dicts
+    cleaned_points: List[float] = []
+    if isinstance(data_points, dict):
+        if "history" in data_points and isinstance(data_points["history"], list):
+            for h in data_points["history"]:
+                if isinstance(h, dict):
+                    v = h.get("integrity_score") if h.get("integrity_score") is not None else h.get("score")
+                    if isinstance(v, (int, float)):
+                        cleaned_points.append(float(v))
+        else:
+            for v in data_points.values():
+                if isinstance(v, (int, float)):
+                    cleaned_points.append(float(v))
+    elif isinstance(data_points, (list, tuple)):
+        for p in data_points:
+            if isinstance(p, (int, float)):
+                cleaned_points.append(float(p))
+            elif isinstance(p, dict):
+                v = p.get("integrity_score") or p.get("score") or p.get("actual") or p.get("value")
+                if isinstance(v, (int, float)):
+                    cleaned_points.append(float(v))
+
+    if not cleaned_points or len(cleaned_points) < min_points:
+        return fallback_svg
+
+    try:
+        # Determine trend color if not explicitly provided
+        if color is None:
+            diff = cleaned_points[-1] - cleaned_points[0]
+            spread = max(cleaned_points) - min(cleaned_points)
+            effective_diff = -diff if is_burndown else diff
+            if spread > 0 and abs(diff) / spread > 0.05:
+                stroke_color = COLORS["success"] if effective_diff > 0 else COLORS["danger"]
+            else:
+                stroke_color = COLORS["neutral"]
+        else:
+            stroke_color = color
+
+        min_v = min(cleaned_points)
+        max_v = max(cleaned_points)
+        spread = (max_v - min_v) if max_v != min_v else 1.0
+
+        coords = []
+        step_x = (width - 8) / (len(cleaned_points) - 1)
+        for i, v in enumerate(cleaned_points):
+            x = round(4 + i * step_x, 1)
+            y = round((height - 4) - ((v - min_v) / spread) * (height - 8), 1)
+            coords.append((x, y))
+
+        polyline_pts = " ".join(f"{x},{y}" for x, y in coords)
+        last_x, last_y = coords[-1]
+
+        svg = (
+            f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" style="vertical-align:middle;display:inline-block;overflow:visible;">'
+            f'<polyline fill="none" stroke="{stroke_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="{polyline_pts}" />'
+            f'<circle cx="{last_x}" cy="{last_y}" r="3" fill="{stroke_color}" />'
+            f'</svg>'
+        )
+        return svg
+    except Exception:
+        return fallback_svg
 
 
 def render_trend_chip_html(current: float, previous: float, label: str = "vs baseline", is_higher_better: bool = True) -> str:

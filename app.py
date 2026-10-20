@@ -479,12 +479,18 @@ with st.container():
     s1_all_cps = (dx.get_checkpoints() if hasattr(dx, "get_checkpoints") else None) or checkpoints or []
     s1_spark = [float(len(dx.get_dead_ends(cp.get("id") or cp.get("checkpoint_id")))) for cp in s1_all_cps[:5]] if s1_all_cps else []
     s2_burndown = dx.get_sprint_burndown_variance(selected_cid) if hasattr(dx, 'get_sprint_burndown_variance') else {}
-    s2_spark = [float(v) for v in (s2_burndown.get("actual") or [])]
+    s2_spark = [float(v) for v in (s2_burndown.get("actual") or [])] if isinstance(s2_burndown, dict) else []
     s3_conf = dx.get_conformance_trajectory(selected_cid) if hasattr(dx, 'get_conformance_trajectory') else []
-    s3_spark = [float(pt.get("score", 0.0)) for pt in (s3_conf or [])] if s3_conf else []
+    s3_spark = [float(pt.get("score", 0.0)) for pt in (s3_conf or []) if isinstance(pt, dict)] if isinstance(s3_conf, list) else []
     s4_vers = _global_analytics.get("versions", [])
-    s4_spark = [float(v.get("integrity", 0.0)) for v in s4_vers if "integrity" in v] if s4_vers else []
-    s5_spark = dx.get_integrity_trend_7d(selected_session) or []
+    s4_spark = [float(v.get("integrity", 0.0)) for v in s4_vers if isinstance(v, dict) and "integrity" in v] if s4_vers else []
+    s5_trend = dx.get_integrity_trend_7d(selected_session) if hasattr(dx, 'get_integrity_trend_7d') else {}
+    if isinstance(s5_trend, dict):
+        s5_spark = [float(r.get("integrity_score", 1.0)) for r in (s5_trend.get("history") or []) if isinstance(r, dict) and r.get("integrity_score") is not None]
+    elif isinstance(s5_trend, (list, tuple)):
+        s5_spark = [float(x) for x in s5_trend if isinstance(x, (int, float))]
+    else:
+        s5_spark = []
 
     cached_diag = st.session_state.get(f"last_diagnosis_{selected_session}")
     if not cached_diag:
@@ -595,7 +601,10 @@ with st.container():
 
     cards_html = []
     for s in stages_pipeline:
-        spark_svg = lc.render_metric_sparkline_svg(s["spark"], is_burndown=(s["num"] == "02"), height=20, width=54)
+        try:
+            spark_svg = lc.render_metric_sparkline_svg(s.get("spark", []), is_burndown=(s.get("num") == "02"), height=20, width=54)
+        except Exception:
+            spark_svg = lc.render_metric_sparkline_svg([], is_burndown=(s.get("num") == "02"), height=20, width=54)
         c_html = (
             f'<div style="background:rgba(255,255,255,0.75);border:1px solid rgba(15,16,18,0.08);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.03);">'
             f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">'
@@ -3455,9 +3464,24 @@ with tab_e:
             st.caption("*Historical integrity trajectory computed from Supabase 'integrity_score_history' & Delta Lake.*")
         st.caption(f"**Flagship Trajectory Takeaway**: {trend_res.get('summary', 'Integrity is stable.')} Safe resume band (&ge;80%) is maintained with forecast reaching {trend_res['forecast_7d']:.1%}.")
     with t_col2:
-        hist_pts = [float(h.get("integrity_score", 0.0)) for h in (trend_res.get("history") or [])]
+        hist_pts = []
+        for h in (trend_res.get("history") or []):
+            try:
+                if isinstance(h, dict):
+                    v = h.get("integrity_score", 0.0)
+                elif isinstance(h, (list, tuple)) and len(h) > 0:
+                    v = h[0]
+                else:
+                    v = float(h)
+                if v is not None:
+                    hist_pts.append(float(v))
+            except (ValueError, TypeError):
+                continue
         if hist_pts:
-            st.markdown(lc.render_metric_sparkline_svg(hist_pts, color="#0071E3", height=28, width=120), unsafe_allow_html=True)
+            try:
+                st.markdown(lc.render_metric_sparkline_svg(hist_pts, color="#0071E3", height=28, width=120), unsafe_allow_html=True)
+            except Exception:
+                st.caption("Sparkline unavailable")
         else:
             st.caption("No history points recorded")
         st.metric("7-Day Forecast", f"{trend_res['forecast_7d']:.1%}")
